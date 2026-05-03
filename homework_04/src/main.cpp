@@ -30,17 +30,6 @@ struct Tick {
     long fr_ticks;
     long bl_ticks;
     long br_ticks;
-
-    Tick operator-(const Tick& prev) const {
-    	Tick result;
-        result.fl_ticks = fl_ticks - prev.fl_ticks;
-        result.fr_ticks = fr_ticks - prev.fr_ticks;
-        result.bl_ticks = bl_ticks - prev.bl_ticks;
-        result.br_ticks = br_ticks - prev.br_ticks;
-        result.timestamp_ms = timestamp_ms;
-
-        return result;
-	}
 };
 
 struct TickArray {
@@ -81,6 +70,17 @@ TickArray readTicksFile(char* path) {
     input.close();
 
     return { ticks, count };
+}
+
+Tick getDelta(const Tick& curr, const Tick& prev) {
+    Tick result;
+    result.fl_ticks = curr.fl_ticks - prev.fl_ticks;
+    result.fr_ticks = curr.fr_ticks - prev.fr_ticks;
+    result.bl_ticks = curr.bl_ticks - prev.bl_ticks;
+    result.br_ticks = curr.br_ticks - prev.br_ticks;
+    result.timestamp_ms = curr.timestamp_ms;
+
+    return result;
 }
 
 float getDistanceFromTick(float deltaTick, float distance_per_tick) {
@@ -162,7 +162,7 @@ int main(int argc, char** argv) {
         robot_states = new RobotState[tick_array.count]{{0 , 0, 0, 0}};
 
         for (std::size_t i = 1; i < tick_array.count; ++i) {
-            Tick delta_tick = tick_array.data[i] - tick_array.data[i - 1];
+            Tick delta_tick = getDelta(tick_array.data[i], tick_array.data[i - 1]);
             robot_state = updateRobotState(robot_state, delta_tick, wheelbase_m, distance_per_tick);
             robot_states[i] = robot_state;
         }
