@@ -31,6 +31,3 @@ core.*
 # Метадані операційної системи не є частиною навчального репозиторію.
 .DS_Store
 Thumbs.db
-
-#local history extension
-.history/
