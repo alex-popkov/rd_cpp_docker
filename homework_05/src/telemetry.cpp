@@ -4,6 +4,15 @@
 #include <fstream>
 #include <iostream>
 
+#define ENABLE_DEBUG  0
+ 
+#if ENABLE_DEBUG
+  #define DEBUG(msg) std::cout << "[DEBUG] " << msg << std::endl
+#else
+  #define DEBUG(msg)
+#endif
+
+
 // Debugging exercise notes:
 // this file intentionally contains four runtime defects.
 // The defects are related to malformed input shape, invalid numeric values,
@@ -58,7 +67,7 @@ double parse_double(const char* text) {
     const double value = std::strtod(text, &end);
 
     if (end == text) {
-        std::abort();
+        throw std::runtime_error("telemetry.cpp: parse_double:70: Invalid number.");
     }
 
     return value;
@@ -68,6 +77,8 @@ Frame parse_frame(char line[]) {
     char* fields[EXPECTED_FIELD_COUNT] = {};
     const int field_count = split_line(line, fields, EXPECTED_FIELD_COUNT);
     (void)field_count;
+//field_count should be 7
+
 
     Frame frame{};
     frame.timestamp_ms = parse_long(fields[0]);
