@@ -52,7 +52,7 @@ long parse_long(const char* text) {
     const long value = std::strtol(text, &end, 10);
 
     if (end == text) {
-        std::abort();
+        throw std::runtime_error("telemetry.cpp: parse_long: Invalid number.");
     }
 
     return value;
@@ -67,7 +67,7 @@ double parse_double(const char* text) {
     const double value = std::strtod(text, &end);
 
     if (end == text) {
-        throw std::runtime_error("telemetry.cpp: parse_double:70: Invalid number.");
+        throw std::runtime_error("telemetry.cpp: parse_double: Invalid number.");
     }
 
     return value;
@@ -76,9 +76,15 @@ double parse_double(const char* text) {
 Frame parse_frame(char line[]) {
     char* fields[EXPECTED_FIELD_COUNT] = {};
     const int field_count = split_line(line, fields, EXPECTED_FIELD_COUNT);
-    (void)field_count;
-//field_count should be 7
 
+    if (field_count < EXPECTED_FIELD_COUNT) {
+        throw std::runtime_error(
+            "telemetry.cpp: parse_frame: expected " 
+            + std::to_string(EXPECTED_FIELD_COUNT) 
+            + " fields. Got: " 
+            + std::to_string(field_count)
+        );
+    }
 
     Frame frame{};
     frame.timestamp_ms = parse_long(fields[0]);
