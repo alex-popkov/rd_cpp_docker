@@ -21,6 +21,8 @@
 const int EXPECTED_FIELD_COUNT = 7;
 const int MAX_LINE_LENGTH = 256;
 const int SEQ_STEP = 1;
+const int ALLOWED_TEMPERATURE_RANGE[2] = {-40, 120};
+const int ALLOWED_GPS_FIX_VALUES[2] = {0, 1};
 
 int split_line(char line[], char* fields[], int max_fields) {
     int count = 0;
@@ -91,10 +93,58 @@ Frame parse_frame(char line[]) {
     frame.timestamp_ms = parse_long(fields[0]);
     frame.seq = parse_int(fields[1]);
     frame.voltage_v = parse_double(fields[2]);
+
+    if (frame.voltage_v <= 0) {
+        throw std::runtime_error(
+            "telemetry.cpp: parse_frame: voltage should be more then 0. Got: " 
+            + std::to_string(frame.voltage_v) 
+            + " for frame seq "
+            + std::to_string(frame.seq) 
+        );
+    }
+
     frame.current_a = parse_double(fields[3]);
     frame.temperature_c = parse_double(fields[4]);
+
+    if (frame.temperature_c < ALLOWED_TEMPERATURE_RANGE[0] || frame.temperature_c > ALLOWED_TEMPERATURE_RANGE[1]) {
+        throw std::runtime_error(
+            "telemetry.cpp: parse_frame: temperature should be inside the range [" 
+            + std::to_string(ALLOWED_TEMPERATURE_RANGE[0]) 
+            + ", "
+            + std::to_string(ALLOWED_TEMPERATURE_RANGE[1]) 
+            + "] but it's "
+            + std::to_string(frame.temperature_c) 
+            + " for frame seq "
+            + std::to_string(frame.seq) 
+        );
+    }
+
     frame.gps_fix = parse_int(fields[5]);
+
+    if (frame.gps_fix != ALLOWED_GPS_FIX_VALUES[0] && frame.gps_fix != ALLOWED_GPS_FIX_VALUES[1]) {
+        throw std::runtime_error(
+            "telemetry.cpp: parse_frame: gps_fix should be " 
+            + std::to_string(ALLOWED_GPS_FIX_VALUES[0]) 
+            + " or "
+            + std::to_string(ALLOWED_GPS_FIX_VALUES[1]) 
+            + " but it's "
+            + std::to_string(frame.gps_fix) 
+            + " for frame seq "
+            + std::to_string(frame.seq) 
+        );
+    }
+
     frame.satellites = parse_int(fields[6]);
+
+    if (frame.satellites < 0) {
+        throw std::runtime_error(
+            "telemetry.cpp: parse_frame: satellites number should be more then 0. But it's "
+            + std::to_string(frame.satellites) 
+            + " for frame seq "
+            + std::to_string(frame.seq) 
+        );
+    }
+
     return frame;
 }
 
