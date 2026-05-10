@@ -20,6 +20,7 @@
 
 const int EXPECTED_FIELD_COUNT = 7;
 const int MAX_LINE_LENGTH = 256;
+const int SEQ_STEP = 1;
 
 int split_line(char line[], char* fields[], int max_fields) {
     int count = 0;
@@ -120,6 +121,31 @@ int read_frames(const char* path, Frame frames[], int max_frames) {
 
         if (frame_count < max_frames) {
             frames[frame_count] = parse_frame(line);
+
+            if (frame_count > 0) {
+                const Frame& prevFrame = frames[frame_count - 1];
+                const Frame& currFrame = frames[frame_count];
+            
+                if (prevFrame.timestamp_ms >= currFrame.timestamp_ms) {
+                    throw std::runtime_error(
+                         "telemetry.cpp: read_frames: non-monotonic timestamp_ms at frame "
+                        + std::to_string(frame_count)
+                        + ": previous=" + std::to_string(prevFrame.timestamp_ms)
+                        + ", current=" + std::to_string(currFrame.timestamp_ms)
+                    );
+                }
+
+                if (currFrame.seq - prevFrame.seq != SEQ_STEP) {
+                    throw std::runtime_error(
+                       "telemetry.cpp: read_frames: unexpected seq gap at frame "
+                        + std::to_string(frame_count)
+                        + ": previous=" + std::to_string(prevFrame.seq)
+                        + ", current=" + std::to_string(currFrame.seq)
+                        + ", expected step=" + std::to_string(SEQ_STEP)
+                    );
+                }
+            }
+
             ++frame_count;
         }
     }
