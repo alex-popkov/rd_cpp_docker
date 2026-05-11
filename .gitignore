@@ -34,3 +34,5 @@ Thumbs.db
 
 #local history extension
 .history/
+
+.claude/
