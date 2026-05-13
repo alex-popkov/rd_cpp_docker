@@ -156,9 +156,11 @@ double compute_frame_rate_hz(const Frame frames[], int frame_count) {
 
 int read_frames(const char* path, Frame frames[], int max_frames) {
     std::ifstream input{path};
+
     if (!input) {
-        std::cerr << "error: failed to open input file: " << path << '\n';
-        return 0;
+        throw std::runtime_error(
+            std::string("telemetry.cpp: read_frames: failed to open input file: ") + path
+        );
     }
 
     int frame_count = 0;
@@ -198,6 +200,12 @@ int read_frames(const char* path, Frame frames[], int max_frames) {
 
             ++frame_count;
         }
+    }
+
+    if (frame_count == 0) {
+        throw std::runtime_error(
+            "telemetry.cpp: read_frames: no telemetry frames in input file"
+        );
     }
 
     return frame_count;
