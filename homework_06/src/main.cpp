@@ -1,4 +1,4 @@
-#include "balistics.hpp"
+#include "ballistics.hpp"
 
 #include <iostream>
 #include <fstream>
