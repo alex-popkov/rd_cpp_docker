@@ -25,17 +25,17 @@ struct FirePlan {
 
 // Returns ammo parameters by its name.
 // Throws std::runtime_error if the name is not in the supported list.
-Ammo find_ammo(const char* name);
+auto find_ammo(const char* name) -> Ammo;
 
 // Computes how long the ammo falls until it reaches the target's altitude.
 // Throws std::runtime_error if the trajectory is not physically possible
 // (target too high, or computed time is not positive).
-float compute_fall_time(float zd, float attack_speed, const Ammo& ammo);
+auto compute_fall_time(float zd, float attack_speed, const Ammo& ammo) -> float;
 
 // Computes how far the ammo travels horizontally during its fall.
 // Throws std::runtime_error if the computed distance is not positive.
-float compute_horizontal_travel(float t, float attack_speed, const Ammo& ammo);
+auto compute_horizontal_travel(float t, float attack_speed, const Ammo& ammo) -> float;
 
 // Computes the (optional) maneuver point and the fire point.
 // Throws std::runtime_error if the distance to the target is not positive.
-FirePlan compute_fire_plan(Point2D drone, Point2D target, float h, float acceleration_path);
+auto compute_fire_plan(Point2D drone, Point2D target, float h, float acceleration_path) -> FirePlan;
