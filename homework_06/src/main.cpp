@@ -10,6 +10,7 @@ int main(int argc, char** argv)
   // The executable expects an input file path and an output file path.
   if (argc != 3) {
     ERROR("usage: balistics_check <input_path> <output_path>");
+
     return 1;
   }
 
@@ -18,6 +19,7 @@ int main(int argc, char** argv)
 
     if (!input.is_open()) {
       ERROR("could not open input file");
+
       return 1;
     }
 
@@ -52,6 +54,7 @@ int main(int argc, char** argv)
   }
   catch (const std::exception& error) {
     ERROR(error.what());
+
     return 1;
   }
 }
