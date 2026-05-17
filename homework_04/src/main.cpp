@@ -6,13 +6,13 @@
 #define ENABLE_DEBUG  0
  
 #if ENABLE_LOG
-  #define LOG(msg) std::cout << "[LOG] " << msg << std::endl
+  #define LOG(msg) std::cerr << "[LOG] " << msg << std::endl
 #else
   #define LOG(msg)
 #endif
  
 #if ENABLE_DEBUG
-  #define DEBUG(msg) std::cout << "[DEBUG] " << msg << std::endl
+  #define DEBUG(msg) std::cerr << "[DEBUG] " << msg << std::endl
 #else
   #define DEBUG(msg)
 #endif
@@ -110,24 +110,14 @@ RobotState updateRobotState(const RobotState& robot_state, const Tick& delta, fl
 }
 
 void writeOutput(RobotState* robot_states, std::size_t count){
-    std::ofstream output("homework_04/src/output.txt");
-    
-    if (!output.is_open()) { 
-        DEBUG("Could not open output file\n");
-
-        throw std::runtime_error("Could not open output file\n ");
-    }
-
+   
     for (std::size_t i = 0; i < count; ++i) {
-
-        output << robot_states[i].timestamp_ms << " " 
+        std::cout << robot_states[i].timestamp_ms << " " 
             << robot_states[i].x << " "
             << robot_states[i].y << " "
             << robot_states[i].theta
             << "\n";
     }
-
-    output.close();
 }
 
 void freeTickArray(TickArray tick_array) {
@@ -159,15 +149,17 @@ int main(int argc, char** argv) {
         tick_array = readTicksFile(argv[1]);
 
         RobotState robot_state;
-        robot_states = new RobotState[tick_array.count]{{0 , 0, 0, 0}};
+        robot_states = new RobotState[tick_array.count - 1];
 
         for (std::size_t i = 1; i < tick_array.count; ++i) {
             Tick delta_tick = getDelta(tick_array.data[i], tick_array.data[i - 1]);
             robot_state = updateRobotState(robot_state, delta_tick, wheelbase_m, distance_per_tick);
-            robot_states[i] = robot_state;
+            robot_states[i - 1] = robot_state;
         }
 
-        writeOutput(robot_states, tick_array.count);
+        writeOutput(robot_states, tick_array.count - 1);
+
+
 
         freeTickArray(tick_array);
         freeRobotStates(robot_states);
