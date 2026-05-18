@@ -51,6 +51,19 @@ PR-и на вашій копії йдуть у ваш main.
    ARM64 артефакти з'являться в `build/aarch64-debug/`. Цей preset
    використовує toolchain `cmake/toolchains/aarch64-linux-gnu.cmake`.
 
+
+## Перевірка якості перед PR
+
+Одна команда у devcontainer:
+
+\`\`\`bash
+make quality
+\`\`\`
+
+Запускає: `clang-format` + `clang-tidy` + `ctest`. Окремо доступні
+`make format`, `make lint`, `make test`, `make build`, `make clean`.
+\`\`\`
+
 ## Доступ для перевірки
 
 Додати обох лекторів як collaborators свого репо, щоб вони могли бачити
