@@ -26,7 +26,7 @@ class MissionProcessor {
 
         Coord step() {
             Coord* trajectory = targets->getTarget(currentIdx);
-            Coord  targetPos  = trajectory[0];
+            Coord  targetPos  = trajectory[0]; // TODO: use currentTime?
             Coord  dronePos   = droneConfig.startPos;
             Coord  dropPoint  = ballisticSolver->solve(dronePos, targetPos, ammo);
             currentIdx++;

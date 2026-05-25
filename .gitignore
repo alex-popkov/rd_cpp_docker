@@ -36,3 +36,6 @@ Thumbs.db
 .history/
 
 .claude/
+
+# Clangd index cache
+.cache/

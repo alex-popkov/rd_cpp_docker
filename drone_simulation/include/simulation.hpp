@@ -162,7 +162,7 @@ DroneMotion updateDroneMotion(
     DroneMotion droneMotion
 );
 
-inline float getManeuveringTime(
+float getManeuveringTime(
     const float& distanceToTarget, 
     const float& ammoHorizontalFlightDistance,
     const float& attackSpeed,
