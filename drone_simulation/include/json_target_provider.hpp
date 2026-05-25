@@ -1,14 +1,19 @@
+#pragma once
+
 #include "interfaces/target_provider.hpp"
 
 class JsonTargetProvider : public ITargetProvider {
     Coord** targets;
     int count;
-    
-    JsonTargetProvider(const char* path) {
-         
-    }
 
     public:
+
+        JsonTargetProvider(const char* path) {
+            json jsonFile = parseJSONfile(path);
+            count = jsonFile.size();
+            targets = fillTargets(jsonFile);
+        }
+        
         auto getTargetCount() -> int override {
             return count;
         }
@@ -16,5 +21,4 @@ class JsonTargetProvider : public ITargetProvider {
         auto getTarget(int i) -> Coord* override {
             return targets[i];
         }
-         
 };

@@ -1,6 +1,6 @@
 #include <cmath>
 #include <cstring>
-#include "../include/json.hpp"
+#include "json.hpp"
 
 using json = nlohmann::json;
 

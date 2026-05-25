@@ -6,5 +6,5 @@ target_include_directories(simulation PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
 target_compile_options(simulation PRIVATE -Wall -Wextra -pedantic)
 
 add_executable(drone_simulation_check src/main.cpp)
-target_link_libraries(drone_simulation_check PRIVATE drone_simulation)
+target_link_libraries(drone_simulation_check PRIVATE simulation)
 target_compile_options(drone_simulation_check PRIVATE -Wall -Wextra -pedantic)
