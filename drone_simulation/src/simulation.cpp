@@ -314,7 +314,7 @@ void writeSimulationJSONFile(
     fout << out.dump(2);
 }
 
-inline float getAmmoHorizontalFlightDistance(
+float getAmmoHorizontalFlightDistance(
     const float& attackSpeed,
     const float& ammoFlightTime,
     const AmmoParams& ammo,

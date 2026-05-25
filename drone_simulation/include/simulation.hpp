@@ -1,3 +1,4 @@
+#pragma once
 #include <cmath>
 #include <cstring>
 #include "json.hpp"
@@ -179,7 +180,7 @@ void writeSimulationJSONFile(
     int currentStep
 );
 
-inline float getAmmoHorizontalFlightDistance(
+float getAmmoHorizontalFlightDistance(
     const float& attackSpeed,
     const float& ammoFlightTime,
     const AmmoParams& ammo,
