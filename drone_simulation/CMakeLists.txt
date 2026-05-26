@@ -13,3 +13,6 @@ add_executable(drone_simulation_check src/main.cpp)
 target_link_libraries(drone_simulation_check PRIVATE simulation)
 target_link_libraries(drone_simulation_check PRIVATE factory)
 target_compile_options(drone_simulation_check PRIVATE -Wall -Wextra -pedantic)
+
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/data/
+     DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

@@ -5,6 +5,7 @@
 class JsonTargetProvider : public ITargetProvider {
     Coord** targets;
     int count;
+    int timeSteps;
 
     public:
 
@@ -12,6 +13,7 @@ class JsonTargetProvider : public ITargetProvider {
             json jsonFile = parseJSONfile(path);
             count = jsonFile.size();
             targets = fillTargets(jsonFile);
+            timeSteps = jsonFile["timeSteps"];
         }
         
         auto getTargetCount() -> int override {
@@ -21,4 +23,9 @@ class JsonTargetProvider : public ITargetProvider {
         auto getTarget(int i) -> Coord* override {
             return targets[i];
         }
+        
+        auto getTimeSteps() -> int override {
+            return timeSteps;
+        }
+        
 };
