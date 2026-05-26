@@ -15,6 +15,19 @@ class JsonTargetProvider : public ITargetProvider {
             targets = fillTargets(jsonFile);
             timeSteps = jsonFile["timeSteps"];
         }
+
+        ~JsonTargetProvider() override {
+            if (!targets) {
+                return;
+            }
+
+            for (int i = 0; i < count; i++) {
+                delete[] targets[i];   
+                targets[i] = nullptr;  
+            }  
+            delete[] targets;
+            targets = nullptr;
+        }
         
         auto getTargetCount() -> int override {
             return count;

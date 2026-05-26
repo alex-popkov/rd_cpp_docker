@@ -449,22 +449,6 @@ float getAmmoFlightTime(
     return ammoFlightTime;
 }
 
-void freeTargets(
-    Coord**& targets,
-    const int& targetsCount
-) {
-    if (!targets) {
-        return;
-    }
-
-    for (int i = 0; i < targetsCount; i++) {
-        delete[] targets[i];   
-        targets[i] = nullptr;  
-    }  
-    delete[] targets;
-    targets = nullptr;
-}
-
 float length(const Coord& coord) { 
     return std::hypot(coord.x, coord.y); 
 }

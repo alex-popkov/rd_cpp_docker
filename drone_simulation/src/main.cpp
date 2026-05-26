@@ -64,7 +64,7 @@ int main() {
         while (missionProcessor.hasNext()) {
             SimulationStep simulationStep = missionProcessor.step();  
             if (simulationStep.target >= 0) {
-                simSteps[missionProcessor.getCurrentStep()] = simulationStep;
+                simSteps[missionProcessor.getCurrentStep() - 1] = simulationStep;
             }
         }
         

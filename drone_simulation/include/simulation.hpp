@@ -203,11 +203,6 @@ float getAmmoFlightTime(
     const float& g
 );
 
-void freeTargets(
-    Coord**& targets,
-    const int& targetsCount
-);
-
 float length(const Coord& coord);
 
 Coord normalize(const Coord& coord);

@@ -7,20 +7,23 @@ class FileConfigLoader : public IConfigLoader {
     DroneConfig droneConfig;
     const char* droneConfigPath;
     const char* ammoConfigPath;
+    bool loaded = false;  
 
     public:
 
-        FileConfigLoader(const char* droneConfigPath, const char* ammoConfigPath) {
-            this->ammoConfigPath = ammoConfigPath;
-            this->droneConfigPath = droneConfigPath;
+        FileConfigLoader(const char* droneConfigPath, const char* ammoConfigPath): droneConfigPath(droneConfigPath), ammoConfigPath(ammoConfigPath) {
         }
         
         auto load() -> void override {
+            if (loaded) {
+                return;
+            }
             droneConfig = readDroneConfig(droneConfigPath);
             json ammoJSON = parseJSONfile(ammoConfigPath);
             AmmoParams* ammoArr = readAmmo(ammoJSON);
             ammoParams = findAmmo(ammoArr, droneConfig.ammoName, ammoJSON.size());
             delete[] ammoArr;
+            loaded = true;
         };
 
         auto getConfig() -> DroneConfig override {
