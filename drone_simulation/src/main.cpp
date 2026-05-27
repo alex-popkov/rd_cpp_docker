@@ -24,19 +24,22 @@ using json = nlohmann::json;
 #endif
 
 
-int main() {
+ auto main(int argc, char* argv[]) -> int {
     bool failed = false;
     IConfigLoader* loader = nullptr;
     ITargetProvider* targets = nullptr;
     IBallisticSolver* ballisticSolver = nullptr;
     SimulationStep* simSteps = nullptr;
 
+    const char* configPath  = (argc > 1) ? argv[1] : "config.json";
+    const char* ammoPath    = (argc > 2) ? argv[2] : "ammo.json";
+    const char* targetsPath = (argc > 3) ? argv[3] : "targets.json";
+
     try {
-         //simulation start
         const int MAX_STEPS = 10000;
         
-        loader = createLoader(LoaderType::FILE, "config.json", "ammo.json");
-        targets = createProvider(ProviderType::JSON, "targets.json");
+        loader  = createLoader(LoaderType::FILE, configPath, ammoPath);
+        targets = createProvider(ProviderType::JSON, targetsPath);
         
         loader->load();
         DroneConfig droneConfig = loader->getConfig();
