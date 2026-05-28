@@ -4,7 +4,7 @@
 #include "json.hpp"
 #include "simulation.hpp"
 #include "mission_processor.hpp"
-#include "factory.hpp"
+#include "config_loaders/factory.hpp"
 
 using json = nlohmann::json;
 

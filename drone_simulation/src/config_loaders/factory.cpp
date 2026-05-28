@@ -1,8 +1,8 @@
 #include "simulation.hpp"
-#include "factory.hpp"
-#include "analytical_solver.hpp"
-#include "json_target_provider.hpp"
-#include "file_config_loader.hpp"
+#include "config_loaders/factory.hpp"
+#include "solvers/analytical_solver.hpp"
+#include "providers/json_target_provider.hpp"
+#include "config_loaders/file_config_loader.hpp"
 
 auto createSolver(SolverType type, const DroneConfig& config) -> IBallisticSolver* {
     switch (type) {
