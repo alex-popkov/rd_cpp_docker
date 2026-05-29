@@ -1,33 +1,18 @@
 #include "providers/json_target_provider.hpp"
 
-JsonTargetProvider::JsonTargetProvider(const char* path) {
+JsonTargetProvider::JsonTargetProvider(const std::string path) {
     json jsonFile = parseJSONfile(path);
-    count = jsonFile.size();//targetCount
+    count = jsonFile["targetCount"];
     targets = fillTargets(jsonFile);
-    timeSteps = jsonFile["timeSteps"];
 }
 
 JsonTargetProvider::~JsonTargetProvider() {
-    if (!targets) {
-        return;
-    }
-
-    for (int i = 0; i < count; i++) {
-        delete[] targets[i];   
-        targets[i] = nullptr;  
-    }  
-    delete[] targets;
-    targets = nullptr;
 }
 
 auto JsonTargetProvider::getTargetCount() -> int {
     return count;
 }
 
-auto JsonTargetProvider::getTarget(int i) -> Coord* {
+auto JsonTargetProvider::getTarget(int i) -> std::vector<Coord>& {
     return targets[i];
-}
-
-auto JsonTargetProvider::getTimeSteps() -> int {
-    return timeSteps;
 }

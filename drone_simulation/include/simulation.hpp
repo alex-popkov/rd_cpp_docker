@@ -1,6 +1,7 @@
 #pragma once
 #include <cmath>
 #include <cstring>
+#include <vector>
 #include "json.hpp"
 
 using json = nlohmann::json;
@@ -54,7 +55,7 @@ struct Coord {
 };
 
 struct AmmoParams {
-	char name[32];
+	std::string name;
 	float mass;
 	float drag;
 	float lift;
@@ -66,7 +67,7 @@ struct DroneConfig {
 	float initialDir;
 	float attackSpeed;
 	float accelPath;
-	char  ammoName[32];
+	std::string ammoName;
 	float arrayTimeStep;
 	float simTimeStep;
 	float hitRadius; 
@@ -101,17 +102,15 @@ Coord getFireCoords(
 Coord getInterpolatedCoords(
     const float& currentTime, 
     const float& arrayTimeStep, 
-    const Coord* coordInTime,
-    const int& timeSteps
+    const std::vector<Coord>& coordInTime
 );
 
 Coord getPredictedTargetCoords (
     float& currentTime, 
     float& timePeriod, 
-    const Coord* coordInTime, 
+    const std::vector<Coord>& coordInTime, 
     const Coord& target,
-    float& totalTime,
-    const int& timeSteps
+    float& totalTime
  );
 
 float normalizeAngle(float angle);
@@ -175,10 +174,7 @@ Coord getBombLandCoord(
     const float& ammoHorizontalFlightDistance
 );
 
-void writeSimulationJSONFile(
-    SimulationStep simSteps[10001],
-    int currentStep
-);
+void writeSimulationJSONFile(const std::vector<SimulationStep>& simSteps);
 
 float getAmmoHorizontalFlightDistance(
     const float& attackSpeed,
@@ -191,11 +187,11 @@ json parseJSONfile(const std::string& path);
 
 DroneConfig readDroneConfig(const std::string& path);
 
-AmmoParams* readAmmo(json& ammoJSON);
+std::vector<AmmoParams> readAmmo(json& ammoJSON);
 
-AmmoParams findAmmo(const AmmoParams* ammoArr, const char ammoName[32], const int& ammoCount);
+AmmoParams findAmmo(const std::vector<AmmoParams>& ammoArr, const std::string ammoName);
 
-Coord** fillTargets(json& targetsJSON);
+std::vector<std::vector<Coord>> fillTargets(json& targetsJSON);
 
 float getAmmoFlightTime(
     const DroneConfig& droneConfig,

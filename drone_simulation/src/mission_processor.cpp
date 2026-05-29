@@ -52,7 +52,7 @@ auto MissionProcessor::step() -> SimulationStep {
 
     //iteration by targets
     for (int i = 0; i < targets->getTargetCount(); ++i) {
-        Coord target = getInterpolatedCoords(currentTime, droneConfig.arrayTimeStep, targets->getTarget(i), targets->getTimeSteps());
+        Coord target = getInterpolatedCoords(currentTime, droneConfig.arrayTimeStep, targets->getTarget(i));
 
         // balistic
         float distanceToTarget = getDistanceToTarget(target, droneMotion.pos);
@@ -68,7 +68,7 @@ auto MissionProcessor::step() -> SimulationStep {
         float totalTimeRough = droneToFireTime + ammoFlightTime;
 
         Coord predictedTarget = getPredictedTargetCoords(
-            currentTime, droneConfig.arrayTimeStep, targets->getTarget(i), target, totalTimeRough, targets->getTimeSteps()
+            currentTime, droneConfig.arrayTimeStep, targets->getTarget(i), target, totalTimeRough
         );
 
         //predicted balistic
@@ -147,8 +147,7 @@ auto MissionProcessor::step() -> SimulationStep {
     Coord targetAtImpact = getInterpolatedCoords(
         currentTime + bestDroneToFireTime + ammoFlightTime,
         droneConfig.arrayTimeStep,
-        targets->getTarget(bestTargetIndex),
-        targets->getTimeSteps()
+        targets->getTarget(bestTargetIndex)
     );
 
     float bombMissDistance = getDistanceToTarget(bombLandCoord, targetAtImpact);
