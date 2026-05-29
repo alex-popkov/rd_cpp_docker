@@ -1,9 +1,10 @@
+ #include <vector>
  #include "config_loaders/file_config_loader.hpp"
 
 
 FileConfigLoader::FileConfigLoader(
-    const char* droneConfigPath,
-    const char* ammoConfigPath
+    const std::string droneConfigPath,
+    const std::string ammoConfigPath
 ): droneConfigPath(droneConfigPath), ammoConfigPath(ammoConfigPath) {
 }
 
@@ -13,9 +14,8 @@ auto FileConfigLoader::load() -> void {
     }
     droneConfig = readDroneConfig(droneConfigPath);
     json ammoJSON = parseJSONfile(ammoConfigPath);
-    AmmoParams* ammoArr = readAmmo(ammoJSON);
-    ammoParams = findAmmo(ammoArr, droneConfig.ammoName, ammoJSON.size());
-    delete[] ammoArr;
+    std::vector<AmmoParams> ammoArr = readAmmo(ammoJSON);
+    ammoParams = findAmmo(ammoArr, droneConfig.ammoName);
     loaded = true;
 };
 

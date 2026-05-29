@@ -39,9 +39,9 @@ Coord getFireCoords(
 Coord getInterpolatedCoords(
     const float& currentTime, 
     const float& arrayTimeStep, 
-    const Coord* coordInTime,
-    const int& timeSteps
+    const std::vector<Coord>& coordInTime
 ) {
+    int timeSteps = coordInTime.size();
     int idx = (int)floor(currentTime / arrayTimeStep) % timeSteps;
     int next = (idx + 1) % timeSteps;
     float frac = (currentTime - idx * arrayTimeStep) / arrayTimeStep;
@@ -54,12 +54,11 @@ Coord getInterpolatedCoords(
 Coord getPredictedTargetCoords (
     float& currentTime, 
     float& timePeriod, 
-    const Coord* coordInTime, 
+    const std::vector<Coord>& coordInTime, 
     const Coord& target,
-    float& totalTime,
-    const int& timeSteps
+    float& totalTime
  ) {
-    Coord nextTargetCoord = getInterpolatedCoords(currentTime + timePeriod, timePeriod, coordInTime, timeSteps);
+    Coord nextTargetCoord = getInterpolatedCoords(currentTime + timePeriod, timePeriod, coordInTime);
     Coord targetVelocity = (nextTargetCoord - target) / timePeriod;
     Coord predictedTarget = target + targetVelocity * totalTime;
 
@@ -279,36 +278,34 @@ Coord getBombLandCoord(
 }
 
 void writeSimulationJSONFile(
-    SimulationStep simSteps[10001],
-    int currentStep
+    const std::vector<SimulationStep>& simSteps
 ) {
     json out;
-    int totalRecords = currentStep + 1;
-    out["totalSteps"] = totalRecords;
+    out["totalSteps"] = simSteps.size();
     out["steps"] = json::array();
 
-    for (int i = 0; i < totalRecords; i++) {
-        json step;
-        step["position"] = {
-            {"x", simSteps[i].droneMotion.pos.x},
-             {"y", simSteps[i].droneMotion.pos.y}
+    for (const SimulationStep& step : simSteps) {
+        json stepJson;
+        stepJson["position"] = {
+            {"x", step.droneMotion.pos.x},
+             {"y", step.droneMotion.pos.y}
         };
-        step["direction"] = simSteps[i].droneMotion.dir;
-        step["state"] = simSteps[i].droneMotion.state;
-        step["targetIndex"] = simSteps[i].target;
-        step["dropPoint"] = {
-            {"x", simSteps[i].dropPoint.x},
-            {"y", simSteps[i].dropPoint.y}
+        stepJson["direction"] = step.droneMotion.dir;
+        stepJson["state"] = step.droneMotion.state;
+        stepJson["targetIndex"] = step.target;
+        stepJson["dropPoint"] = {
+            {"x", step.dropPoint.x},
+            {"y", step.dropPoint.y}
         };
-        step["aimPoint"] = {
-            {"x", simSteps[i].aimPoint.x},
-            {"y", simSteps[i].aimPoint.y}
+        stepJson["aimPoint"] = {
+            {"x", step.aimPoint.x},
+            {"y", step.aimPoint.y}
         };
-        step["predictedTarget"] = {
-            {"x", simSteps[i].predictedTarget.x},
-            {"y", simSteps[i].predictedTarget.y}
+        stepJson["predictedTarget"] = {
+            {"x", step.predictedTarget.x},
+            {"y", step.predictedTarget.y}
         };
-        out["steps"].push_back(step);
+        out["steps"].push_back(stepJson);
     }
     std::ofstream fout("simulation.json");
     fout << out.dump(2);
@@ -366,34 +363,37 @@ DroneConfig readDroneConfig(const std::string& path) {
         .turnThreshold = configJSON["drone"]["turnThreshold"],
     };
 
-    std::string tmp = configJSON["ammo"].get<std::string>();
-    const char* cstr = tmp.c_str();
-    std::strncpy(droneConfig.ammoName, cstr, 31);
+    droneConfig.ammoName = configJSON["ammo"].get<std::string>();
 
     DEBUG("ammo config: " << droneConfig.ammoName);
 
     return droneConfig;
 }
 
-AmmoParams* readAmmo(json& ammoJSON) {
+std::vector<AmmoParams> readAmmo(json& ammoJSON) {
     int ammoCount = ammoJSON.size();
-    AmmoParams* ammoArr = new AmmoParams[ammoCount];
+    std::vector<AmmoParams> ammoArr;
+
     for (int i = 0; i < ammoCount; i++) {
-        std::strncpy(ammoArr[i].name, ammoJSON[i]["name"].get<std::string>().c_str(), 31);
-        ammoArr[i].mass = ammoJSON[i]["mass"];
-        ammoArr[i].drag = ammoJSON[i]["drag"];
-        ammoArr[i].lift = ammoJSON[i]["lift"];
+        AmmoParams ammo = {
+            .name = ammoJSON[i]["name"].get<std::string>(),
+            .mass = ammoJSON[i]["mass"],
+            .drag = ammoJSON[i]["drag"],
+            .lift = ammoJSON[i]["lift"]
+        };
+        ammoArr.push_back(ammo);
     }
 
     return ammoArr;
 }
 
-AmmoParams findAmmo(const AmmoParams* ammoArr, const char ammoName[32], const int& ammoCount) {
+AmmoParams findAmmo(const std::vector<AmmoParams>& ammoArr, const std::string ammoName) {
     bool ammoFound = false;
     AmmoParams ammo;
-    for (int i = 0; i < ammoCount; ++i) {
-        if (strcmp(ammoName, ammoArr[i].name) == 0) {
-            ammo = ammoArr[i];
+
+    for (const AmmoParams& item : ammoArr) {
+        if (ammoName == item.name) {
+            ammo = item;
             ammoFound = true;
             break;
         }
@@ -406,17 +406,20 @@ AmmoParams findAmmo(const AmmoParams* ammoArr, const char ammoName[32], const in
     return ammo;
 }
 
-Coord** fillTargets(json& targetsJSON) {
+std::vector<std::vector<Coord>> fillTargets(json& targetsJSON) {
     int targetsCount = targetsJSON["targetCount"];
     int timeSteps = targetsJSON["timeSteps"];
 
-    Coord** targets = new Coord*[targetsCount];
+    std::vector<std::vector<Coord>> targets;
     for (int i = 0; i < targetsCount; i++) {
-        targets[i] = new Coord[timeSteps];
+        std::vector<Coord> track; 
         for (int j = 0; j < timeSteps; j++) {
-            targets[i][j].x = targetsJSON["targets"][i]["positions"][j]["x"];
-            targets[i][j].y = targetsJSON["targets"][i]["positions"][j]["y"];
+            track.push_back({
+                targetsJSON["targets"][i]["positions"][j]["x"],
+                targetsJSON["targets"][i]["positions"][j]["y"]
+            });
         }
+        targets.push_back(track);
     }
 
     return targets;

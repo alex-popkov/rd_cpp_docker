@@ -1,17 +1,16 @@
 #pragma once
-
+#include <cstring>
+#include <vector>
 #include "interfaces/target_provider.hpp"
 
 class JsonTargetProvider : public ITargetProvider {
-    Coord** targets;
+    std::vector<std::vector<Coord>> targets;
     int count;
-    int timeSteps;
 
     public:
-        JsonTargetProvider(const char* path);
+        JsonTargetProvider(const std::string path);
         ~JsonTargetProvider() override;
         
         auto getTargetCount() -> int override;
-        auto getTarget(int i) -> Coord* override;
-        auto getTimeSteps() -> int override;
+        auto getTarget(int i) -> std::vector<Coord>& override;
 };
