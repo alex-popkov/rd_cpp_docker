@@ -370,40 +370,30 @@ DroneConfig readDroneConfig(const std::string& path) {
     return droneConfig;
 }
 
-std::vector<AmmoParams> readAmmo(json& ammoJSON) {
+std::unordered_map<std::string, AmmoParams> getAmmoMap(json& ammoJSON) {
     int ammoCount = ammoJSON.size();
-    std::vector<AmmoParams> ammoArr;
+    std::unordered_map<std::string, AmmoParams> ammoMap;
 
     for (int i = 0; i < ammoCount; i++) {
-        AmmoParams ammo = {
-            .name = ammoJSON[i]["name"].get<std::string>(),
+        const std::string ammoName = ammoJSON[i]["name"].get<std::string>();
+         AmmoParams ammo = {
+            .name = ammoName,
             .mass = ammoJSON[i]["mass"],
             .drag = ammoJSON[i]["drag"],
             .lift = ammoJSON[i]["lift"]
         };
-        ammoArr.push_back(ammo);
+        ammoMap[ammoName] = ammo;
     }
 
-    return ammoArr;
+    return ammoMap;
 }
 
-AmmoParams findAmmo(const std::vector<AmmoParams>& ammoArr, const std::string ammoName) {
-    bool ammoFound = false;
-    AmmoParams ammo;
-
-    for (const AmmoParams& item : ammoArr) {
-        if (ammoName == item.name) {
-            ammo = item;
-            ammoFound = true;
-            break;
-        }
+AmmoParams findAmmo(const std::unordered_map<std::string, AmmoParams>& ammoMap, const std::string ammoName) {
+    auto it = ammoMap.find(ammoName);
+    if (it == ammoMap.end()) {
+        throw std::runtime_error("Unknown ammo\n");
     }
-
-    if (!ammoFound) {
-        throw std::runtime_error("Unknown ammo\n ");
-    }
-
-    return ammo;
+    return it->second;
 }
 
 std::vector<std::vector<Coord>> fillTargets(json& targetsJSON) {

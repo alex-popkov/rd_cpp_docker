@@ -2,6 +2,7 @@
 #include <cmath>
 #include <cstring>
 #include <vector>
+#include <unordered_map>
 #include "json.hpp"
 
 using json = nlohmann::json;
@@ -186,9 +187,9 @@ json parseJSONfile(const std::string& path);
 
 DroneConfig readDroneConfig(const std::string& path);
 
-std::vector<AmmoParams> readAmmo(json& ammoJSON);
+std::unordered_map<std::string, AmmoParams> getAmmoMap(json& ammoJSON);
 
-AmmoParams findAmmo(const std::vector<AmmoParams>& ammoArr, const std::string ammoName);
+AmmoParams findAmmo(const std::unordered_map<std::string, AmmoParams>& ammoMap, const std::string ammoName);
 
 std::vector<std::vector<Coord>> fillTargets(json& targetsJSON);
 
