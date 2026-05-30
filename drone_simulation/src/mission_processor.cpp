@@ -13,12 +13,11 @@ auto MissionProcessor::init(IConfigLoader* configLoader) -> void {
     droneConfig = configLoader->getConfig();
     ammo = configLoader->getAmmoParams();
 
-    ammoFlightTime = getAmmoFlightTime(droneConfig, ammo, g);
+    ammoFlightTime = getAmmoFlightTime(droneConfig, ammo);
     ammoHorizontalFlightDistance =  getAmmoHorizontalFlightDistance(
         droneConfig.attackSpeed,
         ammoFlightTime,
-        ammo,
-        g
+        ammo
     );
     acceleration = droneConfig.attackSpeed * droneConfig.attackSpeed / (2.0f * droneConfig.accelPath);
     droneMotion = {
