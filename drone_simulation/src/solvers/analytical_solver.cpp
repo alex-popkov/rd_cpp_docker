@@ -9,9 +9,8 @@ auto  AnalyticalSolver::solve(
             const Coord& targetPosition,
             const AmmoParams& ammo
 ) -> Coord {
-    const float g = 9.81f; 
-    float flightTime = getAmmoFlightTime(droneConfig, ammo, g);
-    float ammoHorizontalFlightDistance  = getAmmoHorizontalFlightDistance(droneConfig.attackSpeed, flightTime, ammo, g);
+    float flightTime = getAmmoFlightTime(droneConfig, ammo);
+    float ammoHorizontalFlightDistance  = getAmmoHorizontalFlightDistance(droneConfig.attackSpeed, flightTime, ammo);
     float distanceToTarget = getDistanceToTarget(targetPosition, dronePosition);
     float ratio = getRatio(distanceToTarget, ammoHorizontalFlightDistance);
 

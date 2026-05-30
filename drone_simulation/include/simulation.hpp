@@ -179,8 +179,7 @@ void writeSimulationJSONFile(const std::vector<SimulationStep>& simSteps);
 float getAmmoHorizontalFlightDistance(
     const float& attackSpeed,
     const float& ammoFlightTime,
-    const AmmoParams& ammo,
-    const float& g
+    const AmmoParams& ammo
 );
 
 json parseJSONfile(const std::string& path);
@@ -195,8 +194,7 @@ std::vector<std::vector<Coord>> fillTargets(json& targetsJSON);
 
 float getAmmoFlightTime(
     const DroneConfig& droneConfig,
-    const AmmoParams& ammo,
-    const float& g
+    const AmmoParams& ammo
 );
 
 float length(const Coord& coord);

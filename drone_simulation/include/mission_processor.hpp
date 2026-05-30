@@ -6,7 +6,6 @@
 
 class MissionProcessor {
     const int MAX_STEPS = 10000;
-    const float g = 9.81f;
     ITargetProvider*  targets;
     IBallisticSolver* ballisticSolver;
     DroneConfig droneConfig;
