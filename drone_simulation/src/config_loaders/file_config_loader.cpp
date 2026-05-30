@@ -1,5 +1,5 @@
- #include <vector>
- #include "config_loaders/file_config_loader.hpp"
+#include "simulation.hpp"
+#include "config_loaders/file_config_loader.hpp"
 
 
 FileConfigLoader::FileConfigLoader(
@@ -14,8 +14,8 @@ auto FileConfigLoader::load() -> void {
     }
     droneConfig = readDroneConfig(droneConfigPath);
     json ammoJSON = parseJSONfile(ammoConfigPath);
-    std::vector<AmmoParams> ammoArr = readAmmo(ammoJSON);
-    ammoParams = findAmmo(ammoArr, droneConfig.ammoName);
+    std::unordered_map<std::string, AmmoParams> ammoMap = getAmmoMap(ammoJSON);
+    ammoParams = findAmmo(ammoMap, droneConfig.ammoName);
     loaded = true;
 };
 
