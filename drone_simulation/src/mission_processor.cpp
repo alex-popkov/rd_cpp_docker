@@ -44,6 +44,7 @@ auto MissionProcessor::getCurrentStep() -> int {
 auto MissionProcessor::step() -> SimulationStep {
     int bestTargetIndex = -1;
     float bestTotalTime = INFINITY;
+    float bestDroneToFireTime = 0.0f;
     Coord bestFireCoord = {
         .x = 0,
         .y = 0
@@ -61,7 +62,7 @@ auto MissionProcessor::step() -> SimulationStep {
         }
         float ratio = getRatio(distanceToTarget, ammoHorizontalFlightDistance);
 
-        Coord fireCoord = getFireCoords(target, droneMotion.pos, ratio);
+        Coord fireCoord = getFireCoords(target, droneMotion.pos, std::max(ratio, 0.01f));
         float distanceToFire = getDistanceToTarget(fireCoord, droneMotion.pos);
         float droneToFireTime = distanceToFire / droneConfig.attackSpeed;
         float totalTimeRough = droneToFireTime + ammoFlightTime;
@@ -78,7 +79,7 @@ auto MissionProcessor::step() -> SimulationStep {
         }
 
         float newRatio = getRatio(newDistanceToTarget, ammoHorizontalFlightDistance);
-        Coord newFireCoord = getFireCoords(predictedTarget, droneMotion.pos, newRatio);
+        Coord newFireCoord = getFireCoords(predictedTarget, droneMotion.pos, std::max(newRatio, 0.01f));
         float newDistanceToFire = getDistanceToTarget(newFireCoord, droneMotion.pos);
         float newDroneToFireTime = newDistanceToFire / droneConfig.attackSpeed;
         float newTotalTime = newDroneToFireTime + ammoFlightTime;
@@ -107,6 +108,7 @@ auto MissionProcessor::step() -> SimulationStep {
             bestTotalTime = newTotalTime;
             bestTargetIndex = i;
             bestFireCoord = newFireCoord;
+            bestDroneToFireTime = newDroneToFireTime;
         }
     }
 
@@ -143,7 +145,7 @@ auto MissionProcessor::step() -> SimulationStep {
 
     Coord bombLandCoord = getBombLandCoord(droneMotion, ammoHorizontalFlightDistance);
     Coord targetAtImpact = getInterpolatedCoords(
-        currentTime + ammoFlightTime, 
+        currentTime + bestDroneToFireTime + ammoFlightTime,
         droneConfig.arrayTimeStep,
         targets->getTarget(bestTargetIndex),
         targets->getTimeSteps()
