@@ -6,8 +6,8 @@
 
 class MissionProcessor {
     const int MAX_STEPS = 10000;
-    ITargetProvider*  targets;
-    IBallisticSolver* ballisticSolver;
+    std::unique_ptr<ITargetProvider>  targets;
+    std::unique_ptr<IBallisticSolver> ballisticSolver;
     DroneConfig droneConfig;
     AmmoParams ammo;
     DroneMotion droneMotion;
@@ -21,12 +21,12 @@ class MissionProcessor {
     bool hit = false;
 
     public:
-        MissionProcessor(ITargetProvider* targetProvider, IBallisticSolver* solver);
+        MissionProcessor(std::unique_ptr<ITargetProvider> targetProvider, std::unique_ptr<IBallisticSolver> solver);
 
-        auto init(IConfigLoader* configLoader) -> void;
+        auto init(std::unique_ptr<IConfigLoader> configLoader) -> void;
         auto hasNext() -> bool;
         auto getCurrentStep() -> int;
         auto step() -> SimulationStep;
         auto reset() -> void;
-        auto changeSolver(IBallisticSolver* ballisticSolver) -> void;
+        auto changeSolver(std::unique_ptr<IBallisticSolver> ballisticSolver) -> void;
 };

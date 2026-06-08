@@ -25,10 +25,9 @@ using json = nlohmann::json;
 
 
  auto main(int argc, char* argv[]) -> int {
-    bool failed = false;
-    IConfigLoader* loader = nullptr;
-    ITargetProvider* targets = nullptr;
-    IBallisticSolver* ballisticSolver = nullptr;
+    std::unique_ptr<IConfigLoader> loader;
+    std::unique_ptr<ITargetProvider> targets;
+    std::unique_ptr<IBallisticSolver> ballisticSolver;
     std::vector<SimulationStep> simSteps;
 
     const std::string configPath = (argc > 1) ? argv[1] : "config.json";
@@ -44,8 +43,8 @@ using json = nlohmann::json;
         
         ballisticSolver = createSolver(SolverType::ANALYTICAL, droneConfig);
         
-        MissionProcessor missionProcessor(targets, ballisticSolver);
-        missionProcessor.init(loader);
+        MissionProcessor missionProcessor(std::move(targets), std::move(ballisticSolver));
+        missionProcessor.init(std::move(loader));
         
         //write initial sim data
         simSteps.push_back({
@@ -69,15 +68,12 @@ using json = nlohmann::json;
         }
         
         writeSimulationJSONFile(simSteps);
+
+        return 0;
     } catch (const std::exception& error) {
         LOG("Error: " << error.what());
-        failed = true;
+
+        return 1;
     }
-
-    delete loader;
-    delete targets;
-    delete ballisticSolver;
-
-    return failed ? 1 : 0;
 }
 

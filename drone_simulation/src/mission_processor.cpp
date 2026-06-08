@@ -3,12 +3,12 @@
 #include <iostream>
 
 MissionProcessor::MissionProcessor(
-    ITargetProvider* targetProvider,
-    IBallisticSolver* solver
-): targets(targetProvider), ballisticSolver(solver) {
+    std::unique_ptr<ITargetProvider> targetProvider,
+    std::unique_ptr<IBallisticSolver> solver
+): targets(std::move(targetProvider)), ballisticSolver(std::move(solver)) {
 }
 
-auto MissionProcessor::init(IConfigLoader* configLoader) -> void { 
+auto MissionProcessor::init(std::unique_ptr<IConfigLoader> configLoader) -> void { 
     configLoader->load();
     droneConfig = configLoader->getConfig();
     ammo = configLoader->getAmmoParams();
@@ -30,7 +30,6 @@ auto MissionProcessor::init(IConfigLoader* configLoader) -> void {
         .state = STOPPED
     };
 }
-
 
 auto MissionProcessor::hasNext() -> bool { 
     return currentStep <= MAX_STEPS && !hit;
@@ -201,6 +200,6 @@ auto MissionProcessor::reset() -> void {
     };
 }
 
-auto MissionProcessor::changeSolver(IBallisticSolver* ballisticSolver) -> void {
-    this->ballisticSolver = ballisticSolver;
+auto MissionProcessor::changeSolver(std::unique_ptr<IBallisticSolver> ballisticSolver) -> void {
+    this->ballisticSolver = std::move(ballisticSolver);
 }
