@@ -1,0 +1,10 @@
+#pragma once
+#include "interfaces/drone_state.hpp"
+
+class StateDecelerating : public IDroneState {
+    public:
+        StateDecelerating();
+
+        auto execute(DroneContext& ctx) -> std::unique_ptr<IDroneState> override;  
+        auto name() const -> const std::string override; 
+};

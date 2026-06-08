@@ -83,6 +83,18 @@ struct DroneMotion {
     DroneState state = STOPPED;
 };
 
+struct DroneContext {
+    float desiredDir;
+    float turnRemaining;
+    float targetDir;
+    
+    float speed = 0.0f;
+    float dir;
+    Coord pos;
+    
+    const DroneConfig& cfg;
+};
+
 struct SimulationStep {
     int target;
     Coord dropPoint;
