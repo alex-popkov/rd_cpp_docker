@@ -246,6 +246,19 @@ DroneMotion updateDroneMotion(
     return droneMotion;
 }
 
+auto updateDronePosition(const DroneContext& context) -> Coord
+{
+    Coord position = {
+        context.position.x,
+        context.position.y
+    };
+
+    position.x += context.speed * cos(context.direction) * context.config.simTimeStep;
+    position.y += context.speed * sin(context.direction) * context.config.simTimeStep;
+
+    return position;
+}
+
 float getManeuveringTime(
     const float& distanceToTarget, 
     const float& ammoHorizontalFlightDistance,

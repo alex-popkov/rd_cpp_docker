@@ -1,12 +1,24 @@
-#include "drone_states/state_stopped.hpp"
 #include <memory>
+#include "drone_states/state_stopped.hpp"
+#include "drone_states/state_turning.hpp"
+#include "drone_states/state_accelerating.hpp"
 
 StateStopped::StateStopped() {}
 
-auto StateStopped::execute(DroneContext& ctx) -> std::unique_ptr<IDroneState> {
- return std::make_unique<StateStopped>();
-};  
+auto StateStopped::execute(DroneContext& context) -> std::unique_ptr<IDroneState> 
+{
+    float deltaAngle = normalizeAngle(context.directionToTarget - context.direction);
 
-auto StateStopped::name() const -> const std::string {
-    return "";
-}; 
+    if (std::fabs(deltaAngle) > context.config.turnThreshold) {
+
+        return std::make_unique<StateTurning>();
+    }
+    
+    return std::make_unique<StateAccelerating>();
+}
+
+
+auto StateStopped::name() const -> const std::string 
+{
+    return "Stopped";
+}
