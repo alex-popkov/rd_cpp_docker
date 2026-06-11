@@ -15,7 +15,6 @@ class MissionProcessor {
     int currentStep = 1;
     int prevTargetIndex = -1;
     float currentTime = 0.0f;
-    float prevDirToTarget;
     float ammoFlightTime;
     float ammoHorizontalFlightDistance;
     bool hit = false;
@@ -30,4 +29,8 @@ class MissionProcessor {
         auto step() -> SimulationStep;
         auto reset() -> void;
         auto changeSolver(std::unique_ptr<IBallisticSolver> ballisticSolver) -> void;
+
+    private:
+        auto evaluateTarget(int targetIndex, float currentTime, Coord& outFireCoord) -> float;
+        auto getSimulationStep(int targetIndex, const Coord& fireCoord) -> SimulationStep;
 };

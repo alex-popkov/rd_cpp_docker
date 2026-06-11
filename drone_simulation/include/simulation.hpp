@@ -100,6 +100,7 @@ struct SimulationStep {
 	Coord aimPoint;
 	Coord predictedTarget;
     DroneMotion droneMotion;
+    bool hit = false;
 };
 
 float getDistanceToTarget(
