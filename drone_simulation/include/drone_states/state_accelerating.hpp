@@ -6,5 +6,5 @@ class StateAccelerating : public IDroneState {
         StateAccelerating();
 
         auto execute(DroneContext& ctx) -> std::unique_ptr<IDroneState> override;  
-        auto name() const -> const std::string override; 
+        auto code() const -> DroneState override; 
 };

@@ -8,6 +8,11 @@ add_library(drone_simulation_lib
     src/config_loaders/file_config_loader.cpp
     src/config_loaders/factory.cpp
     src/mission_processor.cpp
+    src/drone_states/state_stopped.cpp
+    src/drone_states/state_accelerating.cpp
+    src/drone_states/state_decelerating.cpp
+    src/drone_states/state_turning.cpp
+    src/drone_states/state_moving.cpp
 )
 target_include_directories(drone_simulation_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_options(drone_simulation_lib PRIVATE -Wall -Wextra -pedantic)

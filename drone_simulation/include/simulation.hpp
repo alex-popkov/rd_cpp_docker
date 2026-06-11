@@ -80,17 +80,18 @@ struct DroneMotion {
     float speed = 0.0f;
     float dir;
     Coord pos; 
-    DroneState state = STOPPED;
+    DroneState state;
 };
 
 struct DroneContext {
-    float directionToTarget;    
+    float directionToTarget;
+    float prevDirectionToTarget;    
     float speed = 0.0f;
     float direction;
     float acceleration;
+    float timeToStop;
     Coord position;
-    
-    const DroneConfig& config;
+    const DroneConfig* config;
 };
 
 struct SimulationStep {
@@ -132,42 +133,7 @@ float turnDrone(
     float droneDir
 );
 
-float getTimeToStop(
-    const float& attackSpeed,
-    const float& acceleration,
-    const float& prevDirToTarget,
-    const float& angularSpeed,
-    const DroneMotion& droneMotion
-);
-
 float getRatio(const float& distanceToTarget, const float& ammoHorizontalFlightDistance);
-
-DroneState updateDroneState(
-    const DroneState& droneState, 
-    const float& deltaAngle, 
-    const float& turnThreshold,
-    const float& droneSpeed,
-    const float& attackSpeed
-);
-
-DroneMotion updateDroneVelocity(
-    const float& acceleration,
-    const float& simTimeStep,
-    const float& attackSpeed,
-    const float& angularSpeed,
-    const float& deltaAngle,
-    DroneMotion droneMotion
-);
-
-DroneMotion updateDroneMotion(
-    const float& acceleration,
-    const float& simTimeStep,
-    const float& attackSpeed,
-    const float& angularSpeed,
-    const float& dirToTarget,
-    const float& turnThreshold,
-    DroneMotion droneMotion
-);
 
 auto updateDronePosition(const DroneContext& context) -> Coord;
 
@@ -180,7 +146,7 @@ float getManeuveringTime(
 );
 
 Coord getBombLandCoord(
-    DroneMotion& droneMotion,
+    const DroneContext& droneContext,
     const float& ammoHorizontalFlightDistance
 );
 

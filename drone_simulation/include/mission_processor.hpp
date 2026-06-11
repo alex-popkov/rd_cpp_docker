@@ -2,6 +2,7 @@
 #include "interfaces/ballistic_solver.hpp"
 #include "interfaces/config_loader.hpp"
 #include "interfaces/target_provider.hpp"
+#include "interfaces/drone_state.hpp"
 
 
 class MissionProcessor {
@@ -10,15 +11,15 @@ class MissionProcessor {
     std::unique_ptr<IBallisticSolver> ballisticSolver;
     DroneConfig droneConfig;
     AmmoParams ammo;
-    DroneMotion droneMotion;
+    DroneContext droneContext;
     int currentStep = 1;
     int prevTargetIndex = -1;
     float currentTime = 0.0f;
     float prevDirToTarget;
     float ammoFlightTime;
     float ammoHorizontalFlightDistance;
-    float acceleration;
     bool hit = false;
+    std::unique_ptr<IDroneState> state;
 
     public:
         MissionProcessor(std::unique_ptr<ITargetProvider> targetProvider, std::unique_ptr<IBallisticSolver> solver);

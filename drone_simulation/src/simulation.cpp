@@ -93,157 +93,8 @@ float turnDrone(
     return droneDir;
 }
 
-float getTimeToStop(
-    const float& attackSpeed,
-    const float& acceleration,
-    const float& prevDirToTarget,
-    const float& angularSpeed,
-    const DroneMotion& droneMotion
-) {
-    switch (droneMotion.state) {
-        case STOPPED:
-            return 0; 
-            break;
-
-        case ACCELERATING: 
-            return  droneMotion.speed / acceleration; 
-            break;
-
-        case MOVING:       
-            return attackSpeed / acceleration;
-            break;
-
-        case TURNING:   
-            return fabs(normalizeAngle(prevDirToTarget - droneMotion.dir)) / angularSpeed;
-            break;
-
-        case DECELERATING: 
-            return droneMotion.speed / acceleration;
-            break;
-
-        default:
-            return 0;
-    }
-}
-
 float getRatio(const float& distanceToTarget, const float& ammoHorizontalFlightDistance) {
     return (distanceToTarget - ammoHorizontalFlightDistance) / distanceToTarget;
-}
-
-DroneState updateDroneState(
-    const DroneState& droneState, 
-    const float& deltaAngle, 
-    const float& turnThreshold,
-    const float& droneSpeed,
-    const float& attackSpeed
-) {
-    const bool deltaAngleOkToMove = fabs(deltaAngle) <= turnThreshold;
-    const bool deltaAngleNeedTurn = fabs(deltaAngle) > turnThreshold;
-
-    if (droneState == MOVING && deltaAngleNeedTurn) {
-
-        return DECELERATING;
-    } else if (droneState == DECELERATING && droneSpeed < 1e-6f) {
-
-        return STOPPED;
-    } else if (droneState == STOPPED && deltaAngleNeedTurn) {
-
-        return TURNING;
-    } else if (deltaAngleOkToMove && (droneState == TURNING 
-        || droneState == STOPPED
-        || droneState == DECELERATING)) {
-
-        return ACCELERATING;
-    } else if (droneState == ACCELERATING && droneSpeed >= attackSpeed) {
-
-        return MOVING;
-    } 
-
-    return droneState;
-}
-
-DroneMotion updateDroneVelocity(
-    const float& acceleration,
-    const float& simTimeStep,
-    const float& attackSpeed,
-    const float& angularSpeed,
-    const float& deltaAngle,
-    DroneMotion droneMotion
-) {
-    switch (droneMotion.state) {
-            case STOPPED:
-                droneMotion.speed = 0;
-                break;
-
-            case ACCELERATING: 
-                droneMotion.speed += acceleration * simTimeStep;
-                if (droneMotion.speed > attackSpeed) {
-                    droneMotion.speed = attackSpeed;
-                }
-
-                if (fabs(deltaAngle) > 1e-6f) {
-                    droneMotion.dir = turnDrone(deltaAngle, angularSpeed, simTimeStep, droneMotion.dir); 
-                }
-
-                break;
-
-            case MOVING:
-                droneMotion.speed = attackSpeed;
-                if (fabs(deltaAngle) > 1e-6f) {
-                    droneMotion.dir = turnDrone(deltaAngle, angularSpeed, simTimeStep, droneMotion.dir);
-                }
-                break;
-
-            case DECELERATING:
-                droneMotion.speed -= acceleration * simTimeStep;
-                if (droneMotion.speed <= 1e-6f) {
-                    droneMotion.speed = 0;
-                }
-                break;
-
-            case TURNING:
-                {
-                    droneMotion.speed = 0;
-                    droneMotion.dir = turnDrone(
-                        deltaAngle, angularSpeed, simTimeStep, droneMotion.dir
-                    );
-                }
-                break;
-        }
-
-        return droneMotion;
-}
-
-DroneMotion updateDroneMotion(
-    const float& acceleration,
-    const float& simTimeStep,
-    const float& attackSpeed,
-    const float& angularSpeed,
-    const float& dirToTarget,
-    const float& turnThreshold,
-    DroneMotion droneMotion
-) {
-    float deltaAngle = normalizeAngle(dirToTarget - droneMotion.dir);
-
-    droneMotion.state = updateDroneState(
-        droneMotion.state, 
-        deltaAngle, 
-        turnThreshold, 
-        droneMotion.speed, 
-        attackSpeed
-    );
-    droneMotion = updateDroneVelocity(
-        acceleration,
-        simTimeStep,
-        attackSpeed,
-        angularSpeed,
-        deltaAngle,
-        droneMotion
-    );
-    droneMotion.pos.x += droneMotion.speed * cos(droneMotion.dir) * simTimeStep;
-    droneMotion.pos.y += droneMotion.speed * sin(droneMotion.dir) * simTimeStep;
-
-    return droneMotion;
 }
 
 auto updateDronePosition(const DroneContext& context) -> Coord
@@ -253,8 +104,8 @@ auto updateDronePosition(const DroneContext& context) -> Coord
         context.position.y
     };
 
-    position.x += context.speed * cos(context.direction) * context.config.simTimeStep;
-    position.y += context.speed * sin(context.direction) * context.config.simTimeStep;
+    position.x += context.speed * cos(context.direction) * context.config->simTimeStep;
+    position.y += context.speed * sin(context.direction) * context.config->simTimeStep;
 
     return position;
 }
@@ -277,11 +128,11 @@ float getManeuveringTime(
 }
 
 Coord getBombLandCoord(
-    DroneMotion& droneMotion,
+    const DroneContext& droneContext,
     const float& ammoHorizontalFlightDistance
 ) {
-    const float bombLandX = droneMotion.pos.x + ammoHorizontalFlightDistance * cos(droneMotion.dir);
-    const float bombLandY = droneMotion.pos.y + ammoHorizontalFlightDistance * sin(droneMotion.dir);
+    const float bombLandX = droneContext.position.x + ammoHorizontalFlightDistance * cos(droneContext.direction);
+    const float bombLandY = droneContext.position.y + ammoHorizontalFlightDistance * sin(droneContext.direction);
     Coord bombLandCoord = {
         .x = bombLandX,
         .y = bombLandY
