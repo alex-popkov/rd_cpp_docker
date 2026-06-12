@@ -33,6 +33,7 @@ using json = nlohmann::json;
     const std::string configPath = (argc > 1) ? argv[1] : "config.json";
     const std::string ammoPath = (argc > 2) ? argv[2] : "ammo.json";
     const std::string targetsPath = (argc > 3) ? argv[3] : "targets.json";
+    const std::string ballisticTablePath = (argc > 4) ? argv[4] : "ballistic_table.txt";
 
     try {
         loader  = createLoader(LoaderType::FILE, configPath, ammoPath);
@@ -41,7 +42,8 @@ using json = nlohmann::json;
         loader->load();
         DroneConfig droneConfig = loader->getConfig();
         
-        ballisticSolver = createSolver(SolverType::ANALYTICAL, droneConfig);
+        // ballisticSolver = createSolver(SolverType::ANALYTICAL, droneConfig);
+        ballisticSolver = createSolver(SolverType::TABLE, droneConfig, ballisticTablePath);
         
         MissionProcessor missionProcessor(std::move(targets), std::move(ballisticSolver));
         missionProcessor.init(std::move(loader));

@@ -4,6 +4,7 @@ project(drone_simulation CXX)
 add_library(drone_simulation_lib
     src/simulation.cpp
     src/solvers/analytical_solver.cpp
+    src/solvers/table_solver.cpp
     src/providers/json_target_provider.cpp
     src/config_loaders/file_config_loader.cpp
     src/config_loaders/factory.cpp

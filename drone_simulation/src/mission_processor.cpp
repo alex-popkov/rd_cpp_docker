@@ -72,7 +72,7 @@ auto MissionProcessor::step() -> SimulationStep {
             .predictedTarget = {0, 0},
             .droneMotion     = { this->droneContext.speed, this->droneContext.direction, this->droneContext.position, STOPPED }
         };
-
+    
         return emptyStep;
     }
 
