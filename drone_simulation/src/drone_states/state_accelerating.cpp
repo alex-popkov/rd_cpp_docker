@@ -30,6 +30,6 @@ auto StateAccelerating::execute(DroneContext& context) -> std::unique_ptr<IDrone
     return nullptr;
 }  
 
-auto StateAccelerating::code() const -> DroneState {
-    return ACCELERATING;
+auto StateAccelerating::name() const -> std::string {
+    return NAME;
 }

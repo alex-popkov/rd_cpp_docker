@@ -12,6 +12,6 @@ public:
     // (головний цикл залишить поточний).
     virtual std::unique_ptr<IDroneState> execute(DroneContext& context) = 0;
  
-    virtual DroneState code() const = 0;
+    virtual std::string name() const = 0;
 };
 

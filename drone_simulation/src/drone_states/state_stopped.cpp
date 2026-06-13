@@ -20,7 +20,7 @@ auto StateStopped::execute(DroneContext& context) -> std::unique_ptr<IDroneState
 }
 
 
-auto StateStopped::code() const -> DroneState
+auto StateStopped::name() const -> std::string
 {
-    return STOPPED;
+    return NAME;
 }

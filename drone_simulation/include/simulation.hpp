@@ -7,14 +7,6 @@
 
 using json = nlohmann::json;
 
-enum DroneState {
-    STOPPED,
-    ACCELERATING,
-    DECELERATING,
-    TURNING,
-    MOVING
-};
-
 struct Coord {
 	float x;
 	float y;
@@ -76,13 +68,6 @@ struct DroneConfig {
 	float turnThreshold;
 };
 
-struct DroneMotion {
-    float speed = 0.0f;
-    float dir;
-    Coord pos; 
-    DroneState state;
-};
-
 struct DroneContext {
     float directionToTarget;
     float prevDirectionToTarget;    
@@ -95,12 +80,15 @@ struct DroneContext {
 };
 
 struct SimulationStep {
+    bool hit = false;
     int target;
+    float droneSpeed = 0.0f;
+    float droneDirection;
     Coord dropPoint;
 	Coord aimPoint;
 	Coord predictedTarget;
-    DroneMotion droneMotion;
-    bool hit = false;
+    Coord dronePosition;
+    std::string droneState;
 };
 
 float getDistanceToTarget(

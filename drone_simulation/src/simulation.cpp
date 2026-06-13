@@ -151,11 +151,11 @@ void writeSimulationJSONFile(
     for (const SimulationStep& step : simSteps) {
         json stepJson;
         stepJson["position"] = {
-            {"x", step.droneMotion.pos.x},
-             {"y", step.droneMotion.pos.y}
+            {"x", step.dronePosition.x},
+             {"y", step.dronePosition.y}
         };
-        stepJson["direction"] = step.droneMotion.dir;
-        stepJson["state"] = step.droneMotion.state;
+        stepJson["direction"] = step.droneDirection;
+        stepJson["state"] = step.droneState;
         stepJson["targetIndex"] = step.target;
         stepJson["dropPoint"] = {
             {"x", step.dropPoint.x},

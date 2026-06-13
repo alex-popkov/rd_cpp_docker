@@ -23,6 +23,6 @@ auto StateMoving::execute(DroneContext& context) -> std::unique_ptr<IDroneState>
     return nullptr;
 } 
 
-auto StateMoving::code() const -> DroneState {
-    return MOVING;
+auto StateMoving::name() const -> std::string {
+    return NAME;
 }

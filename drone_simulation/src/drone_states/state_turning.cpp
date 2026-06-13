@@ -20,6 +20,6 @@ auto StateTurning::execute(DroneContext& context) -> std::unique_ptr<IDroneState
     return nullptr;
 }  
 
-auto StateTurning::code() const -> DroneState {
-    return TURNING;
+auto StateTurning::name() const -> std::string {
+    return NAME;
 } 

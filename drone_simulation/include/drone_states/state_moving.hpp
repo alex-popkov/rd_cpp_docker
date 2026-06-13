@@ -3,8 +3,9 @@
 
 class StateMoving : public IDroneState {
     public:
+        static constexpr const char* NAME = "MOVING";
         StateMoving();
 
-        auto execute(DroneContext& context) -> std::unique_ptr<IDroneState> override;  
-        auto code() const -> DroneState override; 
+        auto execute(DroneContext& context) -> std::unique_ptr<IDroneState> override;
+        auto name() const -> std::string override;
 };

@@ -66,11 +66,15 @@ auto MissionProcessor::step() -> SimulationStep {
         this->currentTime += this->droneConfig.simTimeStep;
 
         SimulationStep emptyStep = {
+            .hit             = false,
             .target          = -1,
+            .droneSpeed      = this->droneContext.speed,
+            .droneDirection  = this->droneContext.direction,
             .dropPoint       = {0, 0},
             .aimPoint        = {0, 0},
             .predictedTarget = {0, 0},
-            .droneMotion     = { this->droneContext.speed, this->droneContext.direction, this->droneContext.position, STOPPED }
+            .dronePosition   = this->droneContext.position,
+            .droneState      = StateStopped::NAME
         };
     
         return emptyStep;
@@ -189,11 +193,14 @@ auto MissionProcessor::getSimulationStep(int targetIndex, const Coord& fireCoord
     }
 
     return {
+        .hit = isHit,
         .target = targetIndex,
+        .droneSpeed = this->droneContext.speed,
+        .droneDirection = this->droneContext.direction,
         .dropPoint = fireCoord,
         .aimPoint = aimPoint,
         .predictedTarget = targetAtImpact,
-        .droneMotion = { this->droneContext.speed, this->droneContext.direction, this->droneContext.position, this->state->code() },
-        .hit = isHit
+        .dronePosition = this->droneContext.position,
+        .droneState = this->state->name()
     };
 }

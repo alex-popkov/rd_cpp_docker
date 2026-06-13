@@ -26,6 +26,6 @@ auto StateDecelerating::execute(DroneContext& context) -> std::unique_ptr<IDrone
     return nullptr;
 } 
 
-auto StateDecelerating::code() const -> DroneState {
-    return DECELERATING;
+auto StateDecelerating::name() const -> std::string {
+    return NAME;
 }
