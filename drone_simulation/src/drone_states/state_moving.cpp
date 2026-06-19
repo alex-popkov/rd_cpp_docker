@@ -3,26 +3,27 @@
 #include "drone_states/state_decelerating.hpp"
 #include "simulation.hpp"
 
-
 StateMoving::StateMoving() {}
 
-auto StateMoving::execute(DroneContext& context) -> std::unique_ptr<IDroneState> {
-    float deltaAngle = normalizeAngle(context.directionToTarget - context.direction);
+auto StateMoving::execute(DroneContext& context) -> std::unique_ptr<IDroneState>
+{
+  float deltaAngle = normalizeAngle(context.directionToTarget - context.direction);
 
-    if (fabs(deltaAngle) > 1e-3f && fabs(deltaAngle) <= context.config->turnThreshold) {
-        context.direction = turnDrone(deltaAngle, context.config->angularSpeed, context.config->simTimeStep, context.direction); 
-    }
+  if (fabs(deltaAngle) > 1e-3f && fabs(deltaAngle) <= context.config->turnThreshold) {
+    context.direction = turnDrone(deltaAngle, context.config->angularSpeed, context.config->physicsTimeStep, context.direction);
+  }
 
-    context.timeToStop = context.config->attackSpeed / context.acceleration;
-    context.position = updateDronePosition(context);
+  context.timeToStop = context.config->attackSpeed / context.acceleration;
+  context.position = updateDronePosition(context);
 
-    if (fabs(deltaAngle) > context.config->turnThreshold) {
-        return std::make_unique<StateDecelerating>();
-    }
+  if (fabs(deltaAngle) > context.config->turnThreshold) {
+    return std::make_unique<StateDecelerating>();
+  }
 
-    return nullptr;
-} 
+  return nullptr;
+}
 
-auto StateMoving::name() const -> std::string {
-    return NAME;
+auto StateMoving::name() const -> std::string
+{
+  return NAME;
 }
