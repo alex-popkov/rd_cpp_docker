@@ -175,3 +175,44 @@ auto MissionProcessor::getSimulationStep(int targetIndex, const Coord& fireCoord
           .dronePosition = droneContext.position,
           .droneState = ""};
 }
+
+auto MissionProcessor::start() -> void
+{
+  this->running.store(true);
+}
+
+auto MissionProcessor::isThreadReady() const -> bool
+{
+  return this->ready.load();
+}
+
+auto MissionProcessor::getSteps() const -> const std::vector<SimulationStep>&
+{
+  return this->simulationSteps;
+}
+
+void MissionProcessor::run()
+{
+  this->ready.store(true);
+
+  while (!this->running.load()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+
+  this->simulationSteps.push_back({.hit = false,
+                                   .target = -1,
+                                   .droneDirection = this->droneConfig.initialDir,
+                                   .dropPoint = {0, 0},
+                                   .aimPoint = {0, 0},
+                                   .predictedTarget = {0, 0},
+                                   .dronePosition = this->droneConfig.startPos,
+                                   .droneState = StateStopped::NAME});
+
+  while (this->hasNext()) {
+    SimulationStep simulationStep = this->step();
+    if (simulationStep.target >= 0) {
+      this->simulationSteps.push_back(simulationStep);
+    }
+    std::this_thread::sleep_for(std::chrono::duration<float>(this->droneConfig.simTimeStep / this->droneConfig.timeScale));
+  }
+}

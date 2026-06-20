@@ -5,7 +5,6 @@
 #include "simulation.hpp"
 #include "mission_processor.hpp"
 #include "config_loaders/factory.hpp"
-#include "drone_states/state_stopped.hpp"
 #include "providers/thread_safe_target_provider.hpp"
 
 using json = nlohmann::json;
@@ -39,48 +38,36 @@ auto main(int argc, char* argv[]) -> int
     loader->load();
     DroneConfig droneConfig = loader->getConfig();
     DronePhysics physics(droneConfig);
-    auto targets = std::make_unique<ThreadSafeTargetProvider>(targetsPath, droneConfig.arrayTimeStep);
+    auto targets = std::make_unique<ThreadSafeTargetProvider>(targetsPath, droneConfig.arrayTimeStep, droneConfig.timeScale);
     auto* targetsPtr = targets.get();
 
     SolverType solverType = (solverArg == "analytical") ? SolverType::ANALYTICAL : SolverType::TABLE;
     auto ballisticSolver = createSolver(solverType, droneConfig, ballisticTablePath);
-    std::vector<SimulationStep> simSteps;
 
     MissionProcessor missionProcessor(std::move(targets), std::move(ballisticSolver), &physics);
     missionProcessor.init(std::move(loader));
 
-    // write initial sim data
-    simSteps.push_back({.hit = false,
-                        .target = -1,
-                        .droneDirection = droneConfig.initialDir,
-                        .dropPoint = {0, 0},
-                        .aimPoint = {0, 0},
-                        .predictedTarget = {0, 0},
-                        .dronePosition = droneConfig.startPos,
-                        .droneState = StateStopped::NAME});
+    std::thread providerThread(&ThreadSafeTargetProvider::run, targetsPtr);
+    std::thread physicsThread(&DronePhysics::run, &physics);
+    std::thread missionThread(&MissionProcessor::run, &missionProcessor);
 
-    // simulation loop
-    int physicsStepsPerSim = static_cast<int>(droneConfig.simTimeStep / droneConfig.physicsTimeStep);
-    float targetUpdateAccum = 0.0f;
-
-    while (missionProcessor.hasNext()) {
-      for (int i = 0; i < physicsStepsPerSim; i++) {
-        physics.stepPhysics(droneConfig.physicsTimeStep);
-      }
-
-      targetUpdateAccum += droneConfig.simTimeStep;
-      if (targetUpdateAccum >= droneConfig.arrayTimeStep) {
-        targetsPtr->updateTargets();
-        targetUpdateAccum -= droneConfig.arrayTimeStep;
-      }
-
-      SimulationStep simulationStep = missionProcessor.step();
-      if (simulationStep.target >= 0) {
-        simSteps.push_back(simulationStep);
-      }
+    while (!targetsPtr->isThreadReady() || !physics.isThreadReady() || !missionProcessor.isThreadReady()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
-    writeSimulationJSONFile(simSteps);
+    targetsPtr->start();
+    physics.start();
+    missionProcessor.start();
+
+    missionThread.join();
+
+    physics.stop();
+    targetsPtr->stop();
+
+    physicsThread.join();
+    providerThread.join();
+
+    writeSimulationJSONFile(missionProcessor.getSteps());
 
     return 0;
   }

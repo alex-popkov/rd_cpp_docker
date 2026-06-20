@@ -19,14 +19,14 @@ auto createSolver(SolverType type, const DroneConfig& config, const std::string 
   return nullptr;
 }
 
-auto createProvider(ProviderType type, const std::string param, float arrayTimeStep) -> std::unique_ptr<ITargetProvider>
+auto createProvider(ProviderType type, const std::string param, float arrayTimeStep, float timeScale) -> std::unique_ptr<ITargetProvider>
 {
   switch (type) {
     case ProviderType::JSON:
       return std::make_unique<JsonTargetProvider>(param);
 
     case ProviderType::THREAD_SAFE:
-      return std::make_unique<ThreadSafeTargetProvider>(param, arrayTimeStep);
+      return std::make_unique<ThreadSafeTargetProvider>(param, arrayTimeStep, timeScale);
   }
 
   return nullptr;

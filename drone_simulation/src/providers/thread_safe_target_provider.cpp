@@ -1,10 +1,12 @@
+#include <thread>
 #include "providers/thread_safe_target_provider.hpp"
 
-ThreadSafeTargetProvider::ThreadSafeTargetProvider(const std::string path, float arrayTimeStep)
+ThreadSafeTargetProvider::ThreadSafeTargetProvider(const std::string path, float arrayTimeStep, float timeScale)
+  : arrayTimeStep(arrayTimeStep)
+  , timeScale(timeScale)
 {
   json jsonFile = parseJSONfile(path);
   this->count = jsonFile["targetCount"];
-  this->arrayTimeStep = arrayTimeStep;
   this->trajectories = fillTargets(jsonFile);
   this->currentIndex.resize(this->trajectories.size(), 0);
   this->currentTargets.resize(this->trajectories.size());
@@ -22,11 +24,15 @@ ThreadSafeTargetProvider::~ThreadSafeTargetProvider() {}
 
 auto ThreadSafeTargetProvider::getTargetCount() -> int
 {
+  std::lock_guard<std::mutex> lock(mtx);
+
   return this->count;
 }
 
 auto ThreadSafeTargetProvider::getTarget(int i) -> Target
 {
+  std::lock_guard<std::mutex> lock(mtx);
+
   return this->currentTargets[i];
 }
 
@@ -35,7 +41,7 @@ auto ThreadSafeTargetProvider::updateTargets() -> void
   for (size_t i = 0; i < this->trajectories.size(); i++) {
     int size = this->trajectories[i].size();
 
-    // Просунути індекс на 1, із зацикленням
+    // +1 index, із зацикленням
     this->currentIndex[i] = (this->currentIndex[i] + 1) % size;
 
     int curr = this->currentIndex[i];
@@ -44,4 +50,37 @@ auto ThreadSafeTargetProvider::updateTargets() -> void
     this->currentTargets[i].pos = this->trajectories[i][curr];
     this->currentTargets[i].velocity = (this->trajectories[i][next] - this->trajectories[i][curr]) / this->arrayTimeStep;
   }
+}
+
+auto ThreadSafeTargetProvider::run() -> void
+{
+  this->ready.store(true);
+
+  while (!this->running.load()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+
+  while (!this->stopFlag.load()) {
+    {
+      std::lock_guard<std::mutex> lock(mtx);
+      this->updateTargets();
+    }
+
+    std::this_thread::sleep_for(std::chrono::duration<float>(this->arrayTimeStep / this->timeScale));
+  }
+}
+
+auto ThreadSafeTargetProvider::start() -> void
+{
+  this->running.store(true);
+}
+
+auto ThreadSafeTargetProvider::stop() -> void
+{
+  this->stopFlag.store(true);
+}
+
+auto ThreadSafeTargetProvider::isThreadReady() const -> bool
+{
+  return this->ready.load();
 }
