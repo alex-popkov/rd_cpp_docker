@@ -17,23 +17,6 @@ DronePhysics::DronePhysics(const DroneConfig& config)
   this->state = std::make_unique<StateStopped>();
 }
 
-auto DronePhysics::stepPhysics(float dt) -> void
-{
-  std::lock_guard<std::mutex> lock(mtx);
-  DroneCommand cmd;
-  if (this->commandQueue.tryPop(cmd)) {
-    this->droneContext.directionToTarget = cmd.directionToTarget;
-    this->droneContext.prevDirectionToTarget = cmd.prevDirectionToTarget;
-  }
-
-  auto nextState = this->state->execute(droneContext);
-  if (nextState) {
-    this->state = std::move(nextState);
-  }
-
-  this->elapsedTime += dt;
-}
-
 auto DronePhysics::sendCommand(const DroneCommand& cmd) -> void
 {
   this->commandQueue.push(cmd);
@@ -87,4 +70,21 @@ auto DronePhysics::stop() -> void
 auto DronePhysics::isThreadReady() const -> bool
 {
   return this->ready.load();
+}
+
+auto DronePhysics::stepPhysics(float dt) -> void
+{
+  std::lock_guard<std::mutex> lock(mtx);
+  DroneCommand cmd;
+  if (this->commandQueue.tryPop(cmd)) {
+    this->droneContext.directionToTarget = cmd.directionToTarget;
+    this->droneContext.prevDirectionToTarget = cmd.prevDirectionToTarget;
+  }
+
+  auto nextState = this->state->execute(droneContext);
+  if (nextState) {
+    this->state = std::move(nextState);
+  }
+
+  this->elapsedTime += dt;
 }

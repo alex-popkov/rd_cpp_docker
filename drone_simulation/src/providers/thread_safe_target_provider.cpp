@@ -36,22 +36,6 @@ auto ThreadSafeTargetProvider::getTarget(int i) -> Target
   return this->currentTargets[i];
 }
 
-auto ThreadSafeTargetProvider::updateTargets() -> void
-{
-  for (size_t i = 0; i < this->trajectories.size(); i++) {
-    int size = this->trajectories[i].size();
-
-    // +1 index, із зацикленням
-    this->currentIndex[i] = (this->currentIndex[i] + 1) % size;
-
-    int curr = this->currentIndex[i];
-    int next = (curr + 1) % size;
-
-    this->currentTargets[i].pos = this->trajectories[i][curr];
-    this->currentTargets[i].velocity = (this->trajectories[i][next] - this->trajectories[i][curr]) / this->arrayTimeStep;
-  }
-}
-
 auto ThreadSafeTargetProvider::run() -> void
 {
   this->ready.store(true);
@@ -83,4 +67,20 @@ auto ThreadSafeTargetProvider::stop() -> void
 auto ThreadSafeTargetProvider::isThreadReady() const -> bool
 {
   return this->ready.load();
+}
+
+auto ThreadSafeTargetProvider::updateTargets() -> void
+{
+  for (size_t i = 0; i < this->trajectories.size(); i++) {
+    int size = this->trajectories[i].size();
+
+    // +1 index, із зацикленням
+    this->currentIndex[i] = (this->currentIndex[i] + 1) % size;
+
+    int curr = this->currentIndex[i];
+    int next = (curr + 1) % size;
+
+    this->currentTargets[i].pos = this->trajectories[i][curr];
+    this->currentTargets[i].velocity = (this->trajectories[i][next] - this->trajectories[i][curr]) / this->arrayTimeStep;
+  }
 }

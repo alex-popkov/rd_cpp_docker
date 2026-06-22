@@ -12,7 +12,6 @@ public:
   MissionProcessor(std::unique_ptr<ITargetProvider> targetProvider, std::unique_ptr<IBallisticSolver> solver, DronePhysics* physics);
 
   auto init(std::unique_ptr<IConfigLoader> configLoader) -> void;
-  auto hasNext() -> bool;
   auto getCurrentStep() -> int;
   auto step() -> SimulationStep;
   auto reset() -> void;
@@ -25,6 +24,7 @@ public:
 private:
   auto evaluateTarget(int targetIndex, const DroneContext& droneContext, Coord& outFireCoord) -> float;
   auto getSimulationStep(int targetIndex, const Coord& fireCoord, const DroneContext& droneContext) -> SimulationStep;
+  auto hasNext() -> bool;
 
   const int MAX_STEPS = 10000;
   std::unique_ptr<ITargetProvider> targets;

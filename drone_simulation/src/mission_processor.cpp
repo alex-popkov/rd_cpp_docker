@@ -22,11 +22,6 @@ auto MissionProcessor::init(std::unique_ptr<IConfigLoader> configLoader) -> void
   this->ammoHorizontalFlightDistance = getAmmoHorizontalFlightDistance(this->droneConfig.attackSpeed, this->ammoFlightTime, this->ammo);
 }
 
-auto MissionProcessor::hasNext() -> bool
-{
-  return this->currentStep <= this->MAX_STEPS && !this->hit;
-}
-
 auto MissionProcessor::getCurrentStep() -> int
 {
   return this->currentStep;
@@ -74,8 +69,6 @@ auto MissionProcessor::step() -> SimulationStep
   Coord dirVec = normalize(deltaToFire);
   float newDirection = atan2(dirVec.y, dirVec.x);
 
-  this->dronePhysics->sendCommand({.directionToTarget = newDirection, .prevDirectionToTarget = droneContext.directionToTarget});
-
   SimulationStep simulationStep = this->getSimulationStep(bestTargetIndex, bestFireCoord, droneContext);
   simulationStep.droneState = this->dronePhysics->getStateName();
   simulationStep.timeSecSinceStart = droneTelemetry.timeSecSinceStart;
@@ -84,6 +77,7 @@ auto MissionProcessor::step() -> SimulationStep
   this->prevTargetIndex = bestTargetIndex;
   this->currentStep++;
   this->currentTime += this->droneConfig.simTimeStep;
+  this->dronePhysics->sendCommand({.directionToTarget = newDirection, .prevDirectionToTarget = droneContext.directionToTarget});
 
   return simulationStep;
 }
@@ -99,6 +93,47 @@ auto MissionProcessor::reset() -> void
 auto MissionProcessor::changeSolver(std::unique_ptr<IBallisticSolver> ballisticSolver) -> void
 {
   this->ballisticSolver = std::move(ballisticSolver);
+}
+
+auto MissionProcessor::start() -> void
+{
+  this->running.store(true);
+}
+
+auto MissionProcessor::isThreadReady() const -> bool
+{
+  return this->ready.load();
+}
+
+auto MissionProcessor::getSteps() const -> const std::vector<SimulationStep>&
+{
+  return this->simulationSteps;
+}
+
+void MissionProcessor::run()
+{
+  this->ready.store(true);
+
+  while (!this->running.load()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+
+  this->simulationSteps.push_back({.hit = false,
+                                   .target = -1,
+                                   .droneDirection = this->droneConfig.initialDir,
+                                   .dropPoint = {0, 0},
+                                   .aimPoint = {0, 0},
+                                   .predictedTarget = {0, 0},
+                                   .dronePosition = this->droneConfig.startPos,
+                                   .droneState = StateStopped::NAME});
+
+  while (this->hasNext()) {
+    SimulationStep simulationStep = this->step();
+    if (simulationStep.target >= 0) {
+      this->simulationSteps.push_back(simulationStep);
+    }
+    std::this_thread::sleep_for(std::chrono::duration<float>(this->droneConfig.simTimeStep / this->droneConfig.timeScale));
+  }
 }
 
 auto MissionProcessor::evaluateTarget(int targetIndex, const DroneContext& droneContext, Coord& outFireCoord) -> float
@@ -176,43 +211,7 @@ auto MissionProcessor::getSimulationStep(int targetIndex, const Coord& fireCoord
           .droneState = ""};
 }
 
-auto MissionProcessor::start() -> void
+auto MissionProcessor::hasNext() -> bool
 {
-  this->running.store(true);
-}
-
-auto MissionProcessor::isThreadReady() const -> bool
-{
-  return this->ready.load();
-}
-
-auto MissionProcessor::getSteps() const -> const std::vector<SimulationStep>&
-{
-  return this->simulationSteps;
-}
-
-void MissionProcessor::run()
-{
-  this->ready.store(true);
-
-  while (!this->running.load()) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-  }
-
-  this->simulationSteps.push_back({.hit = false,
-                                   .target = -1,
-                                   .droneDirection = this->droneConfig.initialDir,
-                                   .dropPoint = {0, 0},
-                                   .aimPoint = {0, 0},
-                                   .predictedTarget = {0, 0},
-                                   .dronePosition = this->droneConfig.startPos,
-                                   .droneState = StateStopped::NAME});
-
-  while (this->hasNext()) {
-    SimulationStep simulationStep = this->step();
-    if (simulationStep.target >= 0) {
-      this->simulationSteps.push_back(simulationStep);
-    }
-    std::this_thread::sleep_for(std::chrono::duration<float>(this->droneConfig.simTimeStep / this->droneConfig.timeScale));
-  }
+  return this->currentStep <= this->MAX_STEPS && !this->hit;
 }
