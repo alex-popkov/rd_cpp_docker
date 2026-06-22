@@ -69,7 +69,7 @@ auto DronePhysics::run() -> void
   }
 
   while (!this->stopFlag.load()) {
-    stepPhysics(this->config.physicsTimeStep);
+    this->stepPhysics(this->config.physicsTimeStep);
     std::this_thread::sleep_for(std::chrono::duration<float>(this->config.physicsTimeStep / this->config.timeScale));
   }
 }

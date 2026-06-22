@@ -151,8 +151,8 @@ auto MissionProcessor::getSimulationStep(int targetIndex, const Coord& fireCoord
 {
   Coord bombLandCoord = getBombLandCoord(droneContext, this->ammoHorizontalFlightDistance);
 
-  Target t = this->targets->getTarget(targetIndex);
-  Coord targetAtImpact = t.pos + t.velocity * this->ammoFlightTime;
+  Target target = this->targets->getTarget(targetIndex);
+  Coord targetAtImpact = target.pos + target.velocity * this->ammoFlightTime;
 
   float bombMissDistance = getDistanceToTarget(bombLandCoord, targetAtImpact);
   Coord dir = {.x = std::cos(droneContext.direction), .y = std::sin(droneContext.direction)};

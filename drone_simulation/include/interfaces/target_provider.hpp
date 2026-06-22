@@ -1,5 +1,5 @@
 #pragma once
-#include "../simulation.hpp"
+#include "simulation.hpp"
 
 class ITargetProvider {
 public:

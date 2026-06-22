@@ -2,8 +2,8 @@
 #include <cmath>
 #include <cstring>
 #include <fstream>
-#include "../include/json.hpp"
-#include "../include/simulation.hpp"
+#include "json.hpp"
+#include "simulation.hpp"
 
 using json = nlohmann::json;
 
