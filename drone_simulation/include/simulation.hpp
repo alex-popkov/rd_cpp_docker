@@ -137,7 +137,7 @@ float getManeuveringTime(const float& distanceToTarget,
                          const float& acceleration,
                          const float& angularSpeed);
 
-Coord getBombLandCoord(const DroneContext& droneContext, const float& ammoHorizontalFlightDistance);
+Coord getBombLandCoord(const DroneTelemetry& telemetry, const float& ammoHorizontalFlightDistance);
 
 void writeSimulationJSONFile(const std::vector<SimulationStep>& simSteps);
 

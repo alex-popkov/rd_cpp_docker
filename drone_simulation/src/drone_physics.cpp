@@ -29,13 +29,6 @@ auto DronePhysics::getTelemetry() const -> DroneTelemetry
   return {.pos = droneContext.position, .speed = droneContext.speed, .direction = droneContext.direction, .timeSecSinceStart = elapsedTime};
 }
 
-auto DronePhysics::getContext() const -> DroneContext
-{
-  std::lock_guard<std::mutex> lock(mtx);
-
-  return droneContext;
-}
-
 auto DronePhysics::getStateName() const -> std::string
 {
   std::lock_guard<std::mutex> lock(mtx);

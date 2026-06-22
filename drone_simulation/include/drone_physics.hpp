@@ -12,7 +12,6 @@ public:
 
   auto sendCommand(const DroneCommand& cmd) -> void;
   auto getTelemetry() const -> DroneTelemetry;
-  auto getContext() const -> DroneContext;
   auto getStateName() const -> std::string;
   auto run() -> void;
   auto start() -> void;

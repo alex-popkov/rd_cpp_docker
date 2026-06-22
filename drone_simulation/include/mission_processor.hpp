@@ -22,8 +22,8 @@ public:
   auto getSteps() const -> const std::vector<SimulationStep>&;
 
 private:
-  auto evaluateTarget(int targetIndex, const DroneContext& droneContext, Coord& outFireCoord) -> float;
-  auto getSimulationStep(int targetIndex, const Coord& fireCoord, const DroneContext& droneContext) -> SimulationStep;
+  auto evaluateTarget(int targetIndex, const DroneTelemetry& telemetry, Coord& outFireCoord) -> float;
+  auto getSimulationStep(int targetIndex, const Coord& fireCoord, const DroneTelemetry& telemetry) -> SimulationStep;
   auto hasNext() -> bool;
 
   const int MAX_STEPS = 10000;
@@ -36,6 +36,8 @@ private:
   float currentTime = 0.0f;
   float ammoFlightTime;
   float ammoHorizontalFlightDistance;
+  float acceleration;
+  float prevDirectionToTarget = 0.0f;
   bool hit = false;
   DronePhysics* dronePhysics;
   std::atomic<bool> ready{false};

@@ -110,10 +110,10 @@ float getManeuveringTime(const float& distanceToTarget,
   return flyAwayTime + decelerateTime + turnAroundTime + accelerateTime + flyBackTime;
 }
 
-Coord getBombLandCoord(const DroneContext& droneContext, const float& ammoHorizontalFlightDistance)
+Coord getBombLandCoord(const DroneTelemetry& telemetry, const float& ammoHorizontalFlightDistance)
 {
-  const float bombLandX = droneContext.position.x + ammoHorizontalFlightDistance * cos(droneContext.direction);
-  const float bombLandY = droneContext.position.y + ammoHorizontalFlightDistance * sin(droneContext.direction);
+  const float bombLandX = telemetry.pos.x + ammoHorizontalFlightDistance * cos(telemetry.direction);
+  const float bombLandY = telemetry.pos.y + ammoHorizontalFlightDistance * sin(telemetry.direction);
   Coord bombLandCoord = {.x = bombLandX, .y = bombLandY};
 
   return bombLandCoord;
