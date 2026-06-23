@@ -5,9 +5,9 @@
 
 StateAccelerating::StateAccelerating() {}
 
-auto StateAccelerating::execute(DroneContext& context) -> std::unique_ptr<IDroneState>
+auto StateAccelerating::execute(const DroneStateInput& input) -> std::unique_ptr<IDroneState>
 {
-  if (context.speed >= context.config->attackSpeed) {
+  if (input.speed >= input.config.attackSpeed) {
     return std::make_unique<StateMoving>();
   }
 

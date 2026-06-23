@@ -6,14 +6,13 @@
 
 StateDecelerating::StateDecelerating() {}
 
-auto StateDecelerating::execute(DroneContext& context) -> std::unique_ptr<IDroneState>
+auto StateDecelerating::execute(const DroneStateInput& input) -> std::unique_ptr<IDroneState>
 {
-  if (context.speed <= 1e-3f) {
+  if (input.speed <= 1e-3f) {
     return std::make_unique<StateStopped>();
   }
 
-  float deltaAngle = normalizeAngle(context.directionToTarget - context.direction);
-  if (std::fabs(deltaAngle) <= context.config->turnThreshold) {
+  if (std::fabs(input.deltaAngle) <= input.config.turnThreshold) {
     return std::make_unique<StateAccelerating>();
   }
 

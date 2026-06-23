@@ -70,16 +70,10 @@ auto MissionProcessor::step() -> SimulationStep
   Coord dirVec = normalize(deltaToFire);
   float newDirection = atan2(dirVec.y, dirVec.x);
 
-  DroneContext droneContext = {.directionToTarget = newDirection,
-                               .prevDirectionToTarget = this->prevDirectionToTarget,
-                               .speed = droneTelemetry.speed,
-                               .direction = droneTelemetry.direction,
-                               .acceleration = this->acceleration,
-                               .timeToStop = droneTelemetry.speed / this->acceleration,
-                               .position = droneTelemetry.pos,
-                               .config = &this->droneConfig};
+  float deltaAngle = normalizeAngle(newDirection - droneTelemetry.direction);
 
-  auto nextState = this->droneState->execute(droneContext);
+  DroneStateInput stateInput = {.deltaAngle = deltaAngle, .speed = droneTelemetry.speed, .config = this->droneConfig};
+  auto nextState = this->droneState->execute(stateInput);
   if (nextState) {
     this->droneState = std::move(nextState);
   }
@@ -90,9 +84,8 @@ auto MissionProcessor::step() -> SimulationStep
 
   this->hit = simulationStep.hit;
 
-  float deltaAngle = normalizeAngle(newDirection - droneTelemetry.direction);
   float sign = (deltaAngle > 0) ? 1.0f : -1.0f;
-  float angleSpeed = sign * std::min(std::fabs(deltaAngle) / droneConfig.simTimeStep, droneConfig.angularSpeed);
+  float angleSpeed = sign * std::min(std::fabs(deltaAngle) / this->droneConfig.simTimeStep, this->droneConfig.angularSpeed);
 
   DroneCommand command = {.state = this->droneState->name(), .angleSpeed = angleSpeed};
   this->dronePhysics->sendCommand(command);

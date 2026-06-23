@@ -5,11 +5,9 @@
 
 StateMoving::StateMoving() {}
 
-auto StateMoving::execute(DroneContext& context) -> std::unique_ptr<IDroneState>
+auto StateMoving::execute(const DroneStateInput& input) -> std::unique_ptr<IDroneState>
 {
-  float deltaAngle = normalizeAngle(context.directionToTarget - context.direction);
-
-  if (fabs(deltaAngle) > context.config->turnThreshold) {
+  if (fabs(input.deltaAngle) > input.config.turnThreshold) {
     return std::make_unique<StateDecelerating>();
   }
 

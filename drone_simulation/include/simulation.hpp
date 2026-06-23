@@ -81,13 +81,16 @@ struct DroneConfig {
   float timeScale;
 };
 
+struct DroneStateInput {
+  float deltaAngle;
+  float speed;
+  const DroneConfig& config;
+};
+
 struct DroneContext {
-  float directionToTarget;
-  float prevDirectionToTarget;
   float speed = 0.0f;
   float direction;
   float acceleration;
-  float timeToStop;
   Coord position;
   const DroneConfig* config;
 };

@@ -4,12 +4,9 @@
 DronePhysics::DronePhysics(const DroneConfig& config)
   : config(config)
 {
-  this->droneContext = {.directionToTarget = 0.0f,
-                        .prevDirectionToTarget = 0.0f,
-                        .speed = 0.0f,
+  this->droneContext = {.speed = 0.0f,
                         .direction = config.initialDir,
                         .acceleration = config.attackSpeed * config.attackSpeed / (2.0f * config.accelPath),
-                        .timeToStop = 0.0f,
                         .position = config.startPos,
                         .config = &this->config};
 }
@@ -23,7 +20,10 @@ auto DronePhysics::getTelemetry() const -> DroneTelemetry
 {
   std::lock_guard<std::mutex> lock(mtx);
 
-  return {.pos = droneContext.position, .speed = droneContext.speed, .direction = droneContext.direction, .timeSecSinceStart = elapsedTime};
+  return {.pos = this->droneContext.position,
+          .speed = this->droneContext.speed,
+          .direction = this->droneContext.direction,
+          .timeSecSinceStart = elapsedTime};
 }
 
 auto DronePhysics::run() -> void
@@ -76,34 +76,34 @@ auto DronePhysics::processState(float dt) -> void
       break;
 
     case DroneStates::Turning:
-      droneContext.direction += this->angleSpeed * dt;
-      droneContext.direction = normalizeAngle(droneContext.direction);
+      this->droneContext.direction += this->angleSpeed * dt;
+      this->droneContext.direction = normalizeAngle(this->droneContext.direction);
       break;
 
     case DroneStates::Accelerating:
-      droneContext.speed += droneContext.acceleration * dt;
-      if (droneContext.speed > config.attackSpeed)
-        droneContext.speed = config.attackSpeed;
+      this->droneContext.speed += this->droneContext.acceleration * dt;
+      if (this->droneContext.speed > this->config.attackSpeed)
+        this->droneContext.speed = this->config.attackSpeed;
       if (std::fabs(this->angleSpeed) > 1e-6f) {
-        droneContext.direction += this->angleSpeed * dt;
-        droneContext.direction = normalizeAngle(droneContext.direction);
+        this->droneContext.direction += this->angleSpeed * dt;
+        this->droneContext.direction = normalizeAngle(this->droneContext.direction);
       }
-      droneContext.position = updateDronePosition(droneContext);
+      this->droneContext.position = updateDronePosition(this->droneContext);
       break;
 
     case DroneStates::Moving:
       if (std::fabs(this->angleSpeed) > 1e-6f) {
-        droneContext.direction += this->angleSpeed * dt;
-        droneContext.direction = normalizeAngle(droneContext.direction);
+        this->droneContext.direction += this->angleSpeed * dt;
+        this->droneContext.direction = normalizeAngle(this->droneContext.direction);
       }
-      droneContext.position = updateDronePosition(droneContext);
+      this->droneContext.position = updateDronePosition(this->droneContext);
       break;
 
     case DroneStates::Decelerating:
-      droneContext.speed -= droneContext.acceleration * dt;
-      if (droneContext.speed < 0)
-        droneContext.speed = 0;
-      droneContext.position = updateDronePosition(droneContext);
+      this->droneContext.speed -= this->droneContext.acceleration * dt;
+      if (this->droneContext.speed < 0)
+        this->droneContext.speed = 0;
+      this->droneContext.position = updateDronePosition(this->droneContext);
       break;
   }
 }

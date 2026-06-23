@@ -6,11 +6,9 @@
 
 StateStopped::StateStopped() {}
 
-auto StateStopped::execute(DroneContext& context) -> std::unique_ptr<IDroneState>
+auto StateStopped::execute(const DroneStateInput& input) -> std::unique_ptr<IDroneState>
 {
-  float deltaAngle = normalizeAngle(context.directionToTarget - context.direction);
-
-  if (std::fabs(deltaAngle) > context.config->turnThreshold) {
+  if (std::fabs(input.deltaAngle) > input.config.turnThreshold) {
     return std::make_unique<StateTurning>();
   }
 

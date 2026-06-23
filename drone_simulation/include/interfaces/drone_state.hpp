@@ -10,7 +10,7 @@ public:
   // Виконати логіку стану, повернути наступний стан.
   // Якщо стан не змінився — повернути nullptr
   // (головний цикл залишить поточний).
-  virtual std::unique_ptr<IDroneState> execute(DroneContext& context) = 0;
+  virtual std::unique_ptr<IDroneState> execute(const DroneStateInput& input) = 0;
 
   virtual DroneStates name() const = 0;
 };

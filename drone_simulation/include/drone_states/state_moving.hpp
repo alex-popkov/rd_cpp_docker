@@ -5,6 +5,6 @@ class StateMoving : public IDroneState {
 public:
   StateMoving();
 
-  auto execute(DroneContext& context) -> std::unique_ptr<IDroneState> override;
+  auto execute(const DroneStateInput& input) -> std::unique_ptr<IDroneState> override;
   auto name() const -> DroneStates override;
 };
