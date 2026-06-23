@@ -37,31 +37,32 @@ auto main(int argc, char* argv[]) -> int
 
     loader->load();
     DroneConfig droneConfig = loader->getConfig();
-    DronePhysics physics(droneConfig);
+    auto physics = std::make_unique<DronePhysics>(droneConfig);
     auto targets = std::make_unique<ThreadSafeTargetProvider>(targetsPath, droneConfig.arrayTimeStep, droneConfig.timeScale);
     auto* targetsPtr = targets.get();
+    auto* physicsPtr = physics.get();
 
     SolverType solverType = (solverArg == "analytical") ? SolverType::ANALYTICAL : SolverType::TABLE;
     auto ballisticSolver = createSolver(solverType, droneConfig, ballisticTablePath);
 
-    MissionProcessor missionProcessor(std::move(targets), std::move(ballisticSolver), &physics);
+    MissionProcessor missionProcessor(std::move(targets), std::move(ballisticSolver), physicsPtr);
     missionProcessor.init(std::move(loader));
 
     std::thread providerThread(&ThreadSafeTargetProvider::run, targetsPtr);
-    std::thread physicsThread(&DronePhysics::run, &physics);
+    std::thread physicsThread(&DronePhysics::run, physicsPtr);
     std::thread missionThread(&MissionProcessor::run, &missionProcessor);
 
-    while (!targetsPtr->isThreadReady() || !physics.isThreadReady() || !missionProcessor.isThreadReady()) {
+    while (!targetsPtr->isThreadReady() || !physicsPtr->isThreadReady() || !missionProcessor.isThreadReady()) {
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
     targetsPtr->start();
-    physics.start();
+    physicsPtr->start();
     missionProcessor.start();
 
     missionThread.join();
 
-    physics.stop();
+    physicsPtr->stop();
     targetsPtr->stop();
 
     physicsThread.join();
