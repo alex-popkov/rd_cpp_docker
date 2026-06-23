@@ -1,6 +1,5 @@
 #include <thread>
 #include "drone_physics.hpp"
-#include "drone_states/state_stopped.hpp"
 
 DronePhysics::DronePhysics(const DroneConfig& config)
   : config(config)
@@ -13,8 +12,6 @@ DronePhysics::DronePhysics(const DroneConfig& config)
                         .timeToStop = 0.0f,
                         .position = config.startPos,
                         .config = &this->config};
-
-  this->state = std::make_unique<StateStopped>();
 }
 
 auto DronePhysics::sendCommand(const DroneCommand& cmd) -> void
@@ -27,13 +24,6 @@ auto DronePhysics::getTelemetry() const -> DroneTelemetry
   std::lock_guard<std::mutex> lock(mtx);
 
   return {.pos = droneContext.position, .speed = droneContext.speed, .direction = droneContext.direction, .timeSecSinceStart = elapsedTime};
-}
-
-auto DronePhysics::getStateName() const -> std::string
-{
-  std::lock_guard<std::mutex> lock(mtx);
-
-  return state->name();
 }
 
 auto DronePhysics::run() -> void
@@ -70,14 +60,50 @@ auto DronePhysics::stepPhysics(float dt) -> void
   std::lock_guard<std::mutex> lock(mtx);
   DroneCommand cmd;
   if (this->commandQueue.tryPop(cmd)) {
-    this->droneContext.directionToTarget = cmd.directionToTarget;
-    this->droneContext.prevDirectionToTarget = cmd.prevDirectionToTarget;
+    this->currentState = cmd.state;
+    this->angleSpeed = cmd.angleSpeed;
   }
 
-  auto nextState = this->state->execute(droneContext);
-  if (nextState) {
-    this->state = std::move(nextState);
-  }
+  this->processState(dt);
 
   this->elapsedTime += dt;
+}
+
+auto DronePhysics::processState(float dt) -> void
+{
+  switch (this->currentState) {
+    case DroneStates::Stopped:
+      break;
+
+    case DroneStates::Turning:
+      droneContext.direction += this->angleSpeed * dt;
+      droneContext.direction = normalizeAngle(droneContext.direction);
+      break;
+
+    case DroneStates::Accelerating:
+      droneContext.speed += droneContext.acceleration * dt;
+      if (droneContext.speed > config.attackSpeed)
+        droneContext.speed = config.attackSpeed;
+      if (std::fabs(this->angleSpeed) > 1e-6f) {
+        droneContext.direction += this->angleSpeed * dt;
+        droneContext.direction = normalizeAngle(droneContext.direction);
+      }
+      droneContext.position = updateDronePosition(droneContext);
+      break;
+
+    case DroneStates::Moving:
+      if (std::fabs(this->angleSpeed) > 1e-6f) {
+        droneContext.direction += this->angleSpeed * dt;
+        droneContext.direction = normalizeAngle(droneContext.direction);
+      }
+      droneContext.position = updateDronePosition(droneContext);
+      break;
+
+    case DroneStates::Decelerating:
+      droneContext.speed -= droneContext.acceleration * dt;
+      if (droneContext.speed < 0)
+        droneContext.speed = 0;
+      droneContext.position = updateDronePosition(droneContext);
+      break;
+  }
 }

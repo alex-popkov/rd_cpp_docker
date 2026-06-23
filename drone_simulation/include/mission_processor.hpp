@@ -5,6 +5,7 @@
 #include "interfaces/ballistic_solver.hpp"
 #include "interfaces/config_loader.hpp"
 #include "interfaces/target_provider.hpp"
+#include "interfaces/drone_state.hpp"
 #include "drone_physics.hpp"
 
 class MissionProcessor {
@@ -43,4 +44,5 @@ private:
   std::atomic<bool> ready{false};
   std::atomic<bool> running{false};
   std::vector<SimulationStep> simulationSteps;
+  std::unique_ptr<IDroneState> droneState;
 };

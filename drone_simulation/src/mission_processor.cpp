@@ -10,6 +10,7 @@ MissionProcessor::MissionProcessor(std::unique_ptr<ITargetProvider> targetProvid
   , ballisticSolver(std::move(solver))
   , dronePhysics(physics)
 {
+  this->droneState = std::make_unique<StateStopped>();
 }
 
 auto MissionProcessor::init(std::unique_ptr<IConfigLoader> configLoader) -> void
@@ -60,7 +61,7 @@ auto MissionProcessor::step() -> SimulationStep
                                 .aimPoint = {0, 0},
                                 .predictedTarget = {0, 0},
                                 .dronePosition = droneTelemetry.pos,
-                                .droneState = StateStopped::NAME};
+                                .droneState = DroneStates::Stopped};
 
     return emptyStep;
   }
@@ -69,15 +70,36 @@ auto MissionProcessor::step() -> SimulationStep
   Coord dirVec = normalize(deltaToFire);
   float newDirection = atan2(dirVec.y, dirVec.x);
 
+  DroneContext droneContext = {.directionToTarget = newDirection,
+                               .prevDirectionToTarget = this->prevDirectionToTarget,
+                               .speed = droneTelemetry.speed,
+                               .direction = droneTelemetry.direction,
+                               .acceleration = this->acceleration,
+                               .timeToStop = droneTelemetry.speed / this->acceleration,
+                               .position = droneTelemetry.pos,
+                               .config = &this->droneConfig};
+
+  auto nextState = this->droneState->execute(droneContext);
+  if (nextState) {
+    this->droneState = std::move(nextState);
+  }
+
   SimulationStep simulationStep = this->getSimulationStep(bestTargetIndex, bestFireCoord, droneTelemetry);
-  simulationStep.droneState = this->dronePhysics->getStateName();
   simulationStep.timeSecSinceStart = droneTelemetry.timeSecSinceStart;
+  simulationStep.droneState = this->droneState->name();
+
   this->hit = simulationStep.hit;
+
+  float deltaAngle = normalizeAngle(newDirection - droneTelemetry.direction);
+  float sign = (deltaAngle > 0) ? 1.0f : -1.0f;
+  float angleSpeed = sign * std::min(std::fabs(deltaAngle) / droneConfig.simTimeStep, droneConfig.angularSpeed);
+
+  DroneCommand command = {.state = this->droneState->name(), .angleSpeed = angleSpeed};
+  this->dronePhysics->sendCommand(command);
 
   this->prevTargetIndex = bestTargetIndex;
   this->currentStep++;
   this->currentTime += this->droneConfig.simTimeStep;
-  this->dronePhysics->sendCommand({.directionToTarget = newDirection, .prevDirectionToTarget = this->prevDirectionToTarget});
   this->prevDirectionToTarget = newDirection;
 
   return simulationStep;
@@ -126,7 +148,7 @@ void MissionProcessor::run()
                                    .aimPoint = {0, 0},
                                    .predictedTarget = {0, 0},
                                    .dronePosition = this->droneConfig.startPos,
-                                   .droneState = StateStopped::NAME});
+                                   .droneState = DroneStates::Stopped});
 
   while (this->hasNext()) {
     SimulationStep simulationStep = this->step();
@@ -209,7 +231,7 @@ auto MissionProcessor::getSimulationStep(int targetIndex, const Coord& fireCoord
           .aimPoint = aimPoint,
           .predictedTarget = targetAtImpact,
           .dronePosition = telemetry.pos,
-          .droneState = ""};
+          .droneState = DroneStates::Stopped};
 }
 
 auto MissionProcessor::hasNext() -> bool

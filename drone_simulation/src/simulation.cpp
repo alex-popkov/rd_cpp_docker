@@ -129,7 +129,7 @@ void writeSimulationJSONFile(const std::vector<SimulationStep>& simSteps)
     json stepJson;
     stepJson["position"] = {{"x", step.dronePosition.x}, {"y", step.dronePosition.y}};
     stepJson["direction"] = step.droneDirection;
-    stepJson["state"] = step.droneState;
+    stepJson["state"] = static_cast<int>(step.droneState);
     stepJson["targetIndex"] = step.target;
     stepJson["dropPoint"] = {{"x", step.dropPoint.x}, {"y", step.dropPoint.y}};
     stepJson["aimPoint"] = {{"x", step.aimPoint.x}, {"y", step.aimPoint.y}};

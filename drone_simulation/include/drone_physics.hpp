@@ -3,7 +3,6 @@
 #include <mutex>
 #include <atomic>
 #include "simulation.hpp"
-#include "interfaces/drone_state.hpp"
 #include "thread_safe_queue.hpp"
 
 class DronePhysics {
@@ -12,7 +11,6 @@ public:
 
   auto sendCommand(const DroneCommand& cmd) -> void;
   auto getTelemetry() const -> DroneTelemetry;
-  auto getStateName() const -> std::string;
   auto run() -> void;
   auto start() -> void;
   auto stop() -> void;
@@ -20,13 +18,15 @@ public:
 
 private:
   auto stepPhysics(float dt) -> void;
+  auto processState(float dt) -> void;
 
   DroneContext droneContext;
   DroneConfig config;
   ThreadSafeQueue<DroneCommand> commandQueue;
   mutable std::mutex mtx;
-  std::unique_ptr<IDroneState> state;
   float elapsedTime = 0.0f;
+  float angleSpeed = 0.0f;
+  DroneStates currentState = DroneStates::Stopped;
   std::atomic<bool> ready{false};
   std::atomic<bool> running{false};
   std::atomic<bool> stopFlag{false};

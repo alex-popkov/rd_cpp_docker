@@ -8,18 +8,11 @@ StateDecelerating::StateDecelerating() {}
 
 auto StateDecelerating::execute(DroneContext& context) -> std::unique_ptr<IDroneState>
 {
-  float deltaAngle = normalizeAngle(context.directionToTarget - context.direction);
-  context.position = updateDronePosition(context);
-  context.speed -= context.acceleration * context.config->physicsTimeStep;
-  context.timeToStop = context.speed / context.acceleration;
-
   if (context.speed <= 1e-3f) {
-    context.speed = 0;
-    context.timeToStop = 0;
-
     return std::make_unique<StateStopped>();
   }
 
+  float deltaAngle = normalizeAngle(context.directionToTarget - context.direction);
   if (std::fabs(deltaAngle) <= context.config->turnThreshold) {
     return std::make_unique<StateAccelerating>();
   }
@@ -27,7 +20,7 @@ auto StateDecelerating::execute(DroneContext& context) -> std::unique_ptr<IDrone
   return nullptr;
 }
 
-auto StateDecelerating::name() const -> std::string
+auto StateDecelerating::name() const -> DroneStates
 {
-  return NAME;
+  return DroneStates::Decelerating;
 }
