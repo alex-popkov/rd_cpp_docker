@@ -13,7 +13,7 @@ auto createSolver(SolverType type, const DroneConfig& config) -> IBallisticSolve
     return nullptr;
 }
 
-auto createProvider(ProviderType type, const char* param) -> ITargetProvider* {
+auto createProvider(ProviderType type, const std::string param) -> ITargetProvider* {
     switch (type) {
         case ProviderType::JSON: 
             return new JsonTargetProvider(param);
@@ -22,7 +22,7 @@ auto createProvider(ProviderType type, const char* param) -> ITargetProvider* {
     return nullptr;
 }
 
-auto createLoader(LoaderType type, const char* droneConfigPath, const char* ammoConfigPath) -> IConfigLoader* {
+auto createLoader(LoaderType type, const std::string droneConfigPath, const std::string ammoConfigPath) -> IConfigLoader* {
     switch (type) {
         case LoaderType::FILE: 
             return new FileConfigLoader(droneConfigPath, ammoConfigPath);

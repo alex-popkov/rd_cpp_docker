@@ -29,15 +29,13 @@ using json = nlohmann::json;
     IConfigLoader* loader = nullptr;
     ITargetProvider* targets = nullptr;
     IBallisticSolver* ballisticSolver = nullptr;
-    SimulationStep* simSteps = nullptr;
+    std::vector<SimulationStep> simSteps;
 
-    const char* configPath  = (argc > 1) ? argv[1] : "config.json";
-    const char* ammoPath    = (argc > 2) ? argv[2] : "ammo.json";
-    const char* targetsPath = (argc > 3) ? argv[3] : "targets.json";
+    const std::string configPath = (argc > 1) ? argv[1] : "config.json";
+    const std::string ammoPath = (argc > 2) ? argv[2] : "ammo.json";
+    const std::string targetsPath = (argc > 3) ? argv[3] : "targets.json";
 
     try {
-        const int MAX_STEPS = 10000;
-        
         loader  = createLoader(LoaderType::FILE, configPath, ammoPath);
         targets = createProvider(ProviderType::JSON, targetsPath);
         
@@ -49,33 +47,28 @@ using json = nlohmann::json;
         MissionProcessor missionProcessor(targets, ballisticSolver);
         missionProcessor.init(loader);
         
-        simSteps = new SimulationStep[MAX_STEPS + 1];
         //write initial sim data
-        simSteps[0] = {
-            .target          = -1,
-            .dropPoint       = {0, 0},
-            .aimPoint        = {0, 0},
+        simSteps.push_back({
+            .target = -1,
+            .dropPoint = {0, 0},
+            .aimPoint = {0, 0},
             .predictedTarget = {0, 0},
             .droneMotion = {
-                .dir   = droneConfig.initialDir,
-                .pos   = droneConfig.startPos,
+                .dir = droneConfig.initialDir,
+                .pos = droneConfig.startPos,
                 .state = STOPPED
             }
-        };
+        });
 
         // simulation loop
         while (missionProcessor.hasNext()) {
             SimulationStep simulationStep = missionProcessor.step();  
             if (simulationStep.target >= 0) {
-                simSteps[missionProcessor.getCurrentStep() - 1] = simulationStep;
+                simSteps.push_back(simulationStep);
             }
         }
         
-        writeSimulationJSONFile( 
-            simSteps,
-            missionProcessor.getCurrentStep()
-        );
-
+        writeSimulationJSONFile(simSteps);
     } catch (const std::exception& error) {
         LOG("Error: " << error.what());
         failed = true;
@@ -84,7 +77,6 @@ using json = nlohmann::json;
     delete loader;
     delete targets;
     delete ballisticSolver;
-    delete[] simSteps;
 
     return failed ? 1 : 0;
 }
