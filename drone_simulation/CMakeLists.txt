@@ -21,11 +21,14 @@ add_library(drone_simulation_lib
 find_package(Threads REQUIRED)
 target_link_libraries(drone_simulation_lib PUBLIC Threads::Threads)
 
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GPIOD REQUIRED libgpiod)
+
 target_include_directories(drone_simulation_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_compile_options(drone_simulation_lib PRIVATE -Wall -Wextra -pedantic)
 
 add_executable(drone_simulation_check src/main.cpp)
-target_link_libraries(drone_simulation_check PRIVATE drone_simulation_lib)
+target_link_libraries(drone_simulation_check PRIVATE drone_simulation_lib ${GPIOD_LIBRARIES})
+target_include_directories(drone_simulation_check PRIVATE ${GPIOD_INCLUDE_DIRS})
 target_compile_options(drone_simulation_check PRIVATE -Wall -Wextra -pedantic)
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/data/
