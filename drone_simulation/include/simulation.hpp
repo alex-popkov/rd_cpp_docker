@@ -4,6 +4,7 @@
 #include <vector>
 #include <unordered_map>
 #include "json.hpp"
+#include "drone_link.hpp"
 
 using json = nlohmann::json;
 
@@ -119,6 +120,12 @@ struct DroneTelemetry {
   float timeSecSinceStart;
 };
 
+struct MissionResult {
+  dlink::Control control;
+  bool shouldDrop;
+  int bestTargetIndex;
+};
+
 float getDistanceToTarget(const Coord& target, const Coord& posiiton);
 
 Coord getFireCoords(const Coord& targetCoord, const Coord& dronePos, const float& ratio);
@@ -163,3 +170,5 @@ float getAmmoFlightTime(const DroneConfig& droneConfig, const AmmoParams& ammo);
 float length(const Coord& coord);
 
 Coord normalize(const Coord& coord);
+
+dlink::Control computeControl(const dlink::Telemetry& telem, const dlink::TargetPos& target);

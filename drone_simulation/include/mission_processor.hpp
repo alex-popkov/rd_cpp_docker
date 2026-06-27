@@ -1,48 +1,35 @@
 #pragma once
-#include <atomic>
-#include <thread>
 #include <vector>
 #include "interfaces/ballistic_solver.hpp"
-#include "interfaces/config_loader.hpp"
-#include "interfaces/target_provider.hpp"
-#include "interfaces/drone_state.hpp"
-#include "drone_physics.hpp"
+#include "simulation.hpp"
 
 class MissionProcessor {
 public:
-  MissionProcessor(std::unique_ptr<ITargetProvider> targetProvider, std::unique_ptr<IBallisticSolver> solver, DronePhysics* physics);
+  explicit MissionProcessor(std::unique_ptr<IBallisticSolver> solver);
 
-  auto init(std::unique_ptr<IConfigLoader> configLoader) -> void;
-  auto getCurrentStep() -> int;
-  auto step() -> SimulationStep;
+  auto init(const dlink::AmmoCfg& ammoCfg, float altitude, float attackSpd) -> void;
+  auto process(const dlink::Telemetry& telem, const std::vector<dlink::TargetPos>& targets, int targetCount) -> MissionResult;
   auto reset() -> void;
   auto changeSolver(std::unique_ptr<IBallisticSolver> ballisticSolver) -> void;
-  auto run() -> void;
-  auto start() -> void;
-  auto isThreadReady() const -> bool;
-  auto getSteps() const -> const std::vector<SimulationStep>&;
 
 private:
-  auto evaluateTarget(int targetIndex, const DroneTelemetry& telemetry, Coord& outFireCoord) -> float;
-  auto getSimulationStep(int targetIndex, const Coord& fireCoord, const DroneTelemetry& telemetry) -> SimulationStep;
-  auto hasNext() -> bool;
+  auto evaluateTarget(
+    int targetIndex, const DroneTelemetry& telemetry, const Coord& targetPos, const Coord& targetVelocity, Coord& outFireCoord) -> float;
+  auto checkDrop(const DroneTelemetry& telemetry, const Coord& targetPos) -> bool;
+  auto computeControl(const DroneTelemetry& telemetry, const Coord& firePoint) -> dlink::Control;
 
-  const int MAX_STEPS = 10000;
-  std::unique_ptr<ITargetProvider> targets;
   std::unique_ptr<IBallisticSolver> ballisticSolver;
-  DroneConfig droneConfig;
   AmmoParams ammo;
-  int currentStep = 1;
   int prevTargetIndex = -1;
-  float currentTime = 0.0f;
-  float ammoFlightTime;
-  float ammoHorizontalFlightDistance;
-  float acceleration;
-  float prevDirectionToTarget = 0.0f;
-  bool hit = false;
-  DronePhysics* dronePhysics;
-  std::atomic<bool> ready{false};
-  std::atomic<bool> running{false};
-  std::vector<SimulationStep> simulationSteps;
-  std::unique_ptr<IDroneState> droneState;
+  float ammoFlightTime = 0.0f;
+  float ammoHorizontalFlightDistance = 0.0f;
+  float acceleration = 0.0f;
+  float attackSpeed = 0.0f;
+  float hitRadius = 0.0f;
+  bool initialized = false;
+
+  // Для обчислення швидкості цілей (чекер шле тільки позицію, не швидкість)
+  std::vector<Coord> prevTargetPositions;
+  std::vector<Coord> targetVelocities;
+  float prevTime = -1.0f;
 };

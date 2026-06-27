@@ -1,44 +1,80 @@
 
 #include <iostream>
+#include <cmath>
+#include <algorithm>
 #include "mission_processor.hpp"
-#include "drone_states/state_stopped.hpp"
 
-MissionProcessor::MissionProcessor(std::unique_ptr<ITargetProvider> targetProvider,
-                                   std::unique_ptr<IBallisticSolver> solver,
-                                   DronePhysics* physics)
-  : targets(std::move(targetProvider))
-  , ballisticSolver(std::move(solver))
-  , dronePhysics(physics)
+MissionProcessor::MissionProcessor(std::unique_ptr<IBallisticSolver> solver)
+  : ballisticSolver(std::move(solver))
 {
-  this->droneState = std::make_unique<StateStopped>();
 }
 
-auto MissionProcessor::init(std::unique_ptr<IConfigLoader> configLoader) -> void
+auto MissionProcessor::init(const dlink::AmmoCfg& ammoCfg, float altitude, float attackSpd) -> void
 {
-  configLoader->load();
-  this->droneConfig = configLoader->getConfig();
-  this->ammo = configLoader->getAmmoParams();
+  this->ammo = {.name = std::string(ammoCfg.name), .mass = ammoCfg.mass, .drag = ammoCfg.drag, .lift = ammoCfg.lift};
+  this->hitRadius = ammoCfg.hitRadius;
+  this->attackSpeed = attackSpd;
 
-  this->ammoFlightTime = getAmmoFlightTime(this->droneConfig, this->ammo);
-  this->ammoHorizontalFlightDistance = getAmmoHorizontalFlightDistance(this->droneConfig.attackSpeed, this->ammoFlightTime, this->ammo);
-  this->acceleration = this->droneConfig.attackSpeed * this->droneConfig.attackSpeed / (2.0f * this->droneConfig.accelPath);
+  float accelPath = 50.0f;
+  this->acceleration = this->attackSpeed * this->attackSpeed / (2.0f * accelPath);
+
+  DroneConfig tempConfig{};
+  tempConfig.altitude = altitude;
+  tempConfig.attackSpeed = this->attackSpeed;
+
+  this->ammoFlightTime = getAmmoFlightTime(tempConfig, this->ammo);
+  this->ammoHorizontalFlightDistance = getAmmoHorizontalFlightDistance(this->attackSpeed, this->ammoFlightTime, this->ammo);
+
+  this->initialized = true;
+
+  std::cout << "MP init: flightTime=" << ammoFlightTime << " horizDist=" << ammoHorizontalFlightDistance << std::endl;
 }
 
-auto MissionProcessor::getCurrentStep() -> int
+auto MissionProcessor::process(const dlink::Telemetry& telem,
+                               const std::vector<dlink::TargetPos>& targets,
+                               int targetCount) -> MissionResult
 {
-  return this->currentStep;
-}
+  if (!this->initialized || targetCount <= 0) {
+    return {dlink::Control{0.0f, 0.0f}, false, -1};
+  }
 
-auto MissionProcessor::step() -> SimulationStep
-{
+  DroneTelemetry droneTelem = {
+    .pos = {telem.x, telem.y}, .speed = telem.speed, .direction = telem.dir, .timeSecSinceStart = telem.t_ms / 1000.0f};
+
+  // Обчислити швидкості цілей з різниці позицій між тактами
+  float currentTime = telem.t_ms / 1000.0f;
+
+  if (prevTime >= 0.0f && !prevTargetPositions.empty()) {
+    float dt = currentTime - prevTime;
+    if (dt > 1e-6f) {
+      targetVelocities.resize(targetCount, {0.0f, 0.0f});
+      for (int i = 0; i < targetCount && i < (int)targets.size() && i < (int)prevTargetPositions.size(); ++i) {
+        Coord current = {targets[i].x, targets[i].y};
+        targetVelocities[i] = (current - prevTargetPositions[i]) / dt;
+      }
+    }
+  }
+  else {
+    targetVelocities.resize(targetCount, {0.0f, 0.0f});
+  }
+
+  // Зберегти поточні позиції для наступного такту
+  prevTargetPositions.resize(targetCount);
+  for (int i = 0; i < targetCount && i < (int)targets.size(); ++i) {
+    prevTargetPositions[i] = {targets[i].x, targets[i].y};
+  }
+  prevTime = currentTime;
+
+  // Знайти найкращу ціль
   int bestTargetIndex = -1;
   float bestTotalTime = INFINITY;
-  Coord bestFireCoord = {.x = 0, .y = 0};
-  DroneTelemetry droneTelemetry = this->dronePhysics->getTelemetry();
+  Coord bestFireCoord = {0, 0};
 
-  for (int i = 0; i < this->targets->getTargetCount(); ++i) {
+  for (int i = 0; i < targetCount && i < (int)targets.size(); ++i) {
+    Coord targetPos = {targets[i].x, targets[i].y};
+    Coord velocity = (i < (int)targetVelocities.size()) ? targetVelocities[i] : Coord{0, 0};
     Coord fireCoord;
-    float totalTime = this->evaluateTarget(i, droneTelemetry, fireCoord);
+    float totalTime = evaluateTarget(i, droneTelem, targetPos, velocity, fireCoord);
 
     if (totalTime < bestTotalTime) {
       bestTotalTime = totalTime;
@@ -48,149 +84,54 @@ auto MissionProcessor::step() -> SimulationStep
   }
 
   if (bestTargetIndex < 0) {
-    std::cout << "No valid target at this step, skipping" << std::endl;
-    ++this->currentStep;
-    this->currentTime += this->droneConfig.simTimeStep;
-
-    SimulationStep emptyStep = {.hit = false,
-                                .target = -1,
-                                .droneSpeed = droneTelemetry.speed,
-                                .droneDirection = droneTelemetry.direction,
-                                .timeSecSinceStart = droneTelemetry.timeSecSinceStart,
-                                .dropPoint = {0, 0},
-                                .aimPoint = {0, 0},
-                                .predictedTarget = {0, 0},
-                                .dronePosition = droneTelemetry.pos,
-                                .droneState = DroneStates::Stopped};
-
-    return emptyStep;
+    return {dlink::Control{0.0f, 0.0f}, false, -1};
   }
 
-  Coord deltaToFire = bestFireCoord - droneTelemetry.pos;
-  Coord dirVec = normalize(deltaToFire);
-  float newDirection = atan2(dirVec.y, dirVec.x);
+  Coord bestTargetPos = {targets[bestTargetIndex].x, targets[bestTargetIndex].y};
+  bool shouldDrop = checkDrop(droneTelem, bestTargetPos);
 
-  float deltaAngle = normalizeAngle(newDirection - droneTelemetry.direction);
-
-  DroneStateInput stateInput = {.deltaAngle = deltaAngle, .speed = droneTelemetry.speed, .config = this->droneConfig};
-  auto nextState = this->droneState->execute(stateInput);
-  if (nextState) {
-    this->droneState = std::move(nextState);
-  }
-
-  SimulationStep simulationStep = this->getSimulationStep(bestTargetIndex, bestFireCoord, droneTelemetry);
-  simulationStep.timeSecSinceStart = droneTelemetry.timeSecSinceStart;
-  simulationStep.droneState = this->droneState->name();
-
-  this->hit = simulationStep.hit;
-
-  float sign = (deltaAngle > 0) ? 1.0f : -1.0f;
-  float angleSpeed = sign * std::min(std::fabs(deltaAngle) / this->droneConfig.simTimeStep, this->droneConfig.angularSpeed);
-
-  DroneCommand command = {.state = this->droneState->name(), .angleSpeed = angleSpeed};
-  this->dronePhysics->sendCommand(command);
+  dlink::Control control = computeControl(droneTelem, bestFireCoord);
 
   this->prevTargetIndex = bestTargetIndex;
-  this->currentStep++;
-  this->currentTime += this->droneConfig.simTimeStep;
-  this->prevDirectionToTarget = newDirection;
 
-  return simulationStep;
+  return {control, shouldDrop, bestTargetIndex};
 }
 
-auto MissionProcessor::reset() -> void
+auto MissionProcessor::evaluateTarget(
+  int targetIndex, const DroneTelemetry& telemetry, const Coord& targetPos, const Coord& targetVelocity, Coord& outFireCoord) -> float
 {
-  this->hit = false;
-  this->prevTargetIndex = -1;
-  this->currentStep = 1;
-  this->currentTime = 0.0f;
-}
-
-auto MissionProcessor::changeSolver(std::unique_ptr<IBallisticSolver> ballisticSolver) -> void
-{
-  this->ballisticSolver = std::move(ballisticSolver);
-}
-
-auto MissionProcessor::start() -> void
-{
-  this->running.store(true);
-}
-
-auto MissionProcessor::isThreadReady() const -> bool
-{
-  return this->ready.load();
-}
-
-auto MissionProcessor::getSteps() const -> const std::vector<SimulationStep>&
-{
-  return this->simulationSteps;
-}
-
-void MissionProcessor::run()
-{
-  this->ready.store(true);
-
-  while (!this->running.load()) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-  }
-
-  this->simulationSteps.push_back({.hit = false,
-                                   .target = -1,
-                                   .droneDirection = this->droneConfig.initialDir,
-                                   .dropPoint = {0, 0},
-                                   .aimPoint = {0, 0},
-                                   .predictedTarget = {0, 0},
-                                   .dronePosition = this->droneConfig.startPos,
-                                   .droneState = DroneStates::Stopped});
-
-  while (this->hasNext()) {
-    SimulationStep simulationStep = this->step();
-    if (simulationStep.target >= 0) {
-      this->simulationSteps.push_back(simulationStep);
-    }
-    std::this_thread::sleep_for(std::chrono::duration<float>(this->droneConfig.simTimeStep / this->droneConfig.timeScale));
-  }
-}
-
-auto MissionProcessor::evaluateTarget(int targetIndex, const DroneTelemetry& telemetry, Coord& outFireCoord) -> float
-{
-  Target t = this->targets->getTarget(targetIndex);
-  Coord target = t.pos;
-
-  float distanceToTarget = getDistanceToTarget(target, telemetry.pos);
+  // Прохід 1: грубий — fire point для поточної позиції цілі
+  float distanceToTarget = getDistanceToTarget(targetPos, telemetry.pos);
   if (distanceToTarget < 1e-3f) {
-    std::cout << "Distance to the target " << targetIndex << " is near or less then 0\n" << std::endl;
     return INFINITY;
   }
-  float ratio = getRatio(distanceToTarget, this->ammoHorizontalFlightDistance);
 
-  Coord fireCoord = getFireCoords(target, telemetry.pos, ratio);
+  float ratio = getRatio(distanceToTarget, this->ammoHorizontalFlightDistance);
+  Coord fireCoord = getFireCoords(targetPos, telemetry.pos, ratio);
   float distanceToFire = getDistanceToTarget(fireCoord, telemetry.pos);
-  float droneToFireTime = distanceToFire / this->droneConfig.attackSpeed;
+  float droneToFireTime = distanceToFire / this->attackSpeed;
   float totalTimeRough = droneToFireTime + this->ammoFlightTime;
 
-  Coord predictedTarget = t.pos + t.velocity * totalTimeRough;
+  // Прохід 2: точний — передбачити де буде ціль через totalTimeRough
+  Coord predictedTarget = targetPos + targetVelocity * totalTimeRough;
 
   float newDistanceToTarget = getDistanceToTarget(predictedTarget, telemetry.pos);
   if (newDistanceToTarget < 1e-3f) {
-    std::cout << "Predicted distance to the target " << targetIndex << " is near or less then 0\n" << std::endl;
     return INFINITY;
   }
 
   float newRatio = getRatio(newDistanceToTarget, this->ammoHorizontalFlightDistance);
   outFireCoord = getFireCoords(predictedTarget, telemetry.pos, newRatio);
   float newDistanceToFire = getDistanceToTarget(outFireCoord, telemetry.pos);
-  float newDroneToFireTime = newDistanceToFire / this->droneConfig.attackSpeed;
+  float newDroneToFireTime = newDistanceToFire / this->attackSpeed;
   float totalTime = newDroneToFireTime + this->ammoFlightTime;
 
+  // Штраф за маневр якщо fire point за дроном
   if (newRatio < 0) {
-    totalTime += getManeuveringTime(newDistanceToTarget,
-                                    this->ammoHorizontalFlightDistance,
-                                    this->droneConfig.attackSpeed,
-                                    this->acceleration,
-                                    this->droneConfig.angularSpeed);
+    totalTime += getManeuveringTime(newDistanceToTarget, this->ammoHorizontalFlightDistance, this->attackSpeed, this->acceleration, 1.0f);
   }
 
+  // Штраф за зміну цілі
   if (this->prevTargetIndex != targetIndex && this->prevTargetIndex != -1) {
     totalTime += telemetry.speed / this->acceleration;
   }
@@ -198,36 +139,50 @@ auto MissionProcessor::evaluateTarget(int targetIndex, const DroneTelemetry& tel
   return totalTime;
 }
 
-auto MissionProcessor::getSimulationStep(int targetIndex, const Coord& fireCoord, const DroneTelemetry& telemetry) -> SimulationStep
+auto MissionProcessor::checkDrop(const DroneTelemetry& telemetry, const Coord& targetPos) -> bool
 {
-  Coord bombLandCoord = getBombLandCoord(telemetry, this->ammoHorizontalFlightDistance);
+  Coord bombLand = getBombLandCoord(telemetry, ammoHorizontalFlightDistance);
+  float miss = getDistanceToTarget(bombLand, targetPos);
 
-  Target target = this->targets->getTarget(targetIndex);
-  Coord targetAtImpact = target.pos + target.velocity * this->ammoFlightTime;
+  float dx = targetPos.x - telemetry.pos.x;
+  float dy = targetPos.y - telemetry.pos.y;
+  float desiredDir = std::atan2(dy, dx);
+  float deltaAngle = normalizeAngle(desiredDir - telemetry.direction);
 
-  float bombMissDistance = getDistanceToTarget(bombLandCoord, targetAtImpact);
-  Coord dir = {.x = std::cos(telemetry.direction), .y = std::sin(telemetry.direction)};
-  Coord aimPoint = telemetry.pos + dir * this->ammoHorizontalFlightDistance;
-
-  bool isHit = bombMissDistance < this->droneConfig.hitRadius || bombLandCoord == targetAtImpact;
-
-  if (isHit) {
-    std::cout << (bombLandCoord == targetAtImpact ? "Direct hit" : "Drone hit the target. Bomb miss: ")
-              << (bombLandCoord == targetAtImpact ? "" : std::to_string(bombMissDistance)) << std::endl;
-  }
-
-  return {.hit = isHit,
-          .target = targetIndex,
-          .droneSpeed = telemetry.speed,
-          .droneDirection = telemetry.direction,
-          .dropPoint = fireCoord,
-          .aimPoint = aimPoint,
-          .predictedTarget = targetAtImpact,
-          .dronePosition = telemetry.pos,
-          .droneState = DroneStates::Stopped};
+  return miss <= hitRadius && telemetry.speed > 5.0f && std::fabs(deltaAngle) < 0.3f;
 }
 
-auto MissionProcessor::hasNext() -> bool
+auto MissionProcessor::computeControl(const DroneTelemetry& telemetry, const Coord& firePoint) -> dlink::Control
 {
-  return this->currentStep <= this->MAX_STEPS && !this->hit;
+  float dx = firePoint.x - telemetry.pos.x;
+  float dy = firePoint.y - telemetry.pos.y;
+  float desiredDir = std::atan2(dy, dx);
+  float deltaAngle = normalizeAngle(desiredDir - telemetry.direction);
+
+  float Kp = 2.0f;
+  float turnRate = std::clamp(Kp * deltaAngle, -1.0f, 1.0f);
+
+  float accel;
+  if (std::fabs(deltaAngle) > 0.3f) {
+    accel = 0.2f;
+  }
+  else {
+    accel = 1.0f;
+  }
+
+  return dlink::Control{accel, turnRate};
+}
+
+auto MissionProcessor::reset() -> void
+{
+  prevTargetIndex = -1;
+  prevTime = -1.0f;
+  prevTargetPositions.clear();
+  targetVelocities.clear();
+  initialized = false;
+}
+
+auto MissionProcessor::changeSolver(std::unique_ptr<IBallisticSolver> ballisticSolver) -> void
+{
+  this->ballisticSolver = std::move(ballisticSolver);
 }

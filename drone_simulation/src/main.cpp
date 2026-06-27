@@ -1,30 +1,12 @@
 #include <iostream>
 #include <cmath>
 #include <cstring>
-#include <cstring>
 #include <vector>
-#include "simulation.hpp"
+#include <memory>
 #include "mission_processor.hpp"
-#include "drone_link.hpp"
+#include "solvers/analytical_solver.hpp"
 #include "port_controllers/uart_port.hpp"
 #include "port_controllers/gpio_controller.hpp"
-
-using json = nlohmann::json;
-
-#define ENABLE_LOG 1
-#define ENABLE_DEBUG 0
-
-#if ENABLE_LOG
-#define LOG(msg) std::cout << "[LOG] " << msg << std::endl
-#else
-#define LOG(msg)
-#endif
-
-#if ENABLE_DEBUG
-#define DEBUG(msg) std::cout << "[DEBUG] " << msg << std::endl
-#else
-#define DEBUG(msg)
-#endif
 
 auto main(int argc, char* argv[]) -> int
 {
@@ -67,6 +49,9 @@ auto main(int argc, char* argv[]) -> int
     dlink::Telemetry telemetry{};
 
     bool dropped = false;
+    bool mpInitialized = false;
+
+    std::unique_ptr<MissionProcessor> missionProcessor;
 
     dlink::Parser parser;
     uint8_t buffer[256];
@@ -80,7 +65,6 @@ auto main(int argc, char* argv[]) -> int
 
       uint8_t type, len, payload[260];
       for (int i = 0; i < n; i++) {
-        // feed() повертає true коли зібрано повний валідний кадр
         if (!parser.feed(buffer[i], type, payload, len)) {
           continue;
         }
@@ -92,29 +76,54 @@ auto main(int argc, char* argv[]) -> int
             std::cout << "t=" << telemetry.t_ms << " pos=(" << telemetry.x << "," << telemetry.y << ")" << " speed=" << telemetry.speed
                       << " dir=" << telemetry.dir << std::endl;
 
+            // Створити солвер і MP після першої телеметрії — тепер знаємо altitude і speed
+            if (ammoReceived && !mpInitialized) {
+              float speed = telemetry.speed > 1.0f ? telemetry.speed : 30.0f;
+
+              DroneConfig solverConfig{};
+              solverConfig.altitude = telemetry.z;
+              solverConfig.attackSpeed = speed;
+
+              auto solver = std::make_unique<AnalyticalSolver>(solverConfig);
+              missionProcessor = std::make_unique<MissionProcessor>(std::move(solver));
+              missionProcessor->init(ammo, telemetry.z, speed);
+              mpInitialized = true;
+            }
+
+            // Отримати рішення від MP
             dlink::Control control{0.0f, 0.0f};
+            if (mpInitialized) {
+              MissionResult result = missionProcessor->process(telemetry, targetPositions, targetCount);
+
+              if (result.shouldDrop && !dropped) {
+                std::cout << "DROP!" << std::endl;
+                gpio.signalDrop();
+                dropped = true;
+              }
+
+              control = result.control;
+            }
+
             uint8_t out[64];
-            size_t m = encode(dlink::PKT_CONTROL, &control, sizeof(control), out);
+            size_t m = dlink::encode(dlink::PKT_CONTROL, &control, sizeof(control), out);
             uart.writeBytes(out, m);
             break;
           }
 
           case dlink::PKT_AMMO: {
-            // Приходить один раз на старті.
-            // Містить параметри боєприпасу і кількість цілей.
             std::memcpy(&ammo, payload, sizeof(ammo));
             ammoReceived = true;
             targetCount = ammo.nTargets;
+            targetPositions.resize(targetCount);
             std::cout << "AMMO: " << ammo.name << " mass=" << ammo.mass << " drag=" << ammo.drag << " lift=" << ammo.lift
                       << " hitRadius=" << ammo.hitRadius << " targets=" << (int)ammo.nTargets << std::endl;
             break;
           }
 
           case dlink::PKT_TARGET: {
-            // Приходить періодично для кожної цілі.
-            // Оновлюємо позицію за id.
             dlink::TargetPos targetPosition;
             std::memcpy(&targetPosition, payload, sizeof(targetPosition));
+
             if (targetPosition.id < targetPositions.size()) {
               targetPositions[targetPosition.id] = targetPosition;
             }
@@ -124,19 +133,10 @@ auto main(int argc, char* argv[]) -> int
       }
     }
 
-    // SolverType solverType = (solverArg == "analytical") ? SolverType::ANALYTICAL : SolverType::TABLE;
-    // auto ballisticSolver = createSolver(solverType, droneConfig, ballisticTablePath);
-
-    // MissionProcessor missionProcessor(std::move(targets), std::move(ballisticSolver), physicsPtr);
-    // missionProcessor.init(std::move(loader));
-
-    // writeSimulationJSONFile(missionProcessor.getSteps());
-
     return 0;
   }
   catch (const std::exception& error) {
-    LOG("Error: " << error.what());
-
+    std::cerr << "Error: " << error.what() << std::endl;
     return 1;
   }
 }
