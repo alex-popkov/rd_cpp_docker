@@ -54,5 +54,6 @@ jobs:
           runCmd: |
             cmake --preset debug
             cmake --build --preset debug
+            ctest --test-dir build/debug --output-on-failure
             cmake --preset aarch64-debug
             cmake --build --preset aarch64-debug

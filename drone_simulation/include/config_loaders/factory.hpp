@@ -6,7 +6,7 @@
 #include "interfaces/target_provider.hpp"
 #include "interfaces/config_loader.hpp"
 
-enum class SolverType   { 
+enum class SolverType   {
     ANALYTICAL,
     TABLE
 };

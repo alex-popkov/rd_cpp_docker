@@ -9,11 +9,11 @@ auto createSolver(SolverType type, const DroneConfig& config, const std::string 
     switch (type) {
         case SolverType::ANALYTICAL: 
             return std::make_unique<AnalyticalSolver>(config);
-            
-        case SolverType::TABLE: 
+
+        case SolverType::TABLE:
             return std::make_unique<TableSolver>(config, tablePath);
     }
-    
+
     return nullptr;
 }
 

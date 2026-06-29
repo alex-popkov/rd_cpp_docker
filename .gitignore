@@ -7,11 +7,13 @@ out/
 CMakeCache.txt
 CMakeFiles/
 CTestTestfile.cmake
-Makefile
 cmake_install.cmake
 compile_commands.json
 install_manifest.txt
 _deps/
+
+Makefile
+!/Makefile
 
 # Мінімальний набір compiled/debug артефактів для C++ прикладів.
 *.d
@@ -39,3 +41,5 @@ Thumbs.db
 
 # Clangd index cache
 .cache/
+
+simulation.json

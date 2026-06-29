@@ -14,5 +14,5 @@ auto  AnalyticalSolver::solve(
     float distanceToTarget = getDistanceToTarget(targetPosition, dronePosition);
     float ratio = getRatio(distanceToTarget, ammoHorizontalFlightDistance);
 
-    return getFireCoords(targetPosition, dronePosition, ratio);
+    return getFireCoords(targetPosition, dronePosition, std::max(ratio, 0.01f));
 }

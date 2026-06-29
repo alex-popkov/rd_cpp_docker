@@ -76,7 +76,7 @@ auto MissionProcessor::step() -> SimulationStep {
             .dronePosition   = this->droneContext.position,
             .droneState      = StateStopped::NAME
         };
-    
+
         return emptyStep;
     }
 

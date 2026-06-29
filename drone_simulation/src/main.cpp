@@ -45,7 +45,7 @@ using json = nlohmann::json;
         
         MissionProcessor missionProcessor(std::move(targets), std::move(ballisticSolver));
         missionProcessor.init(std::move(loader));
-        
+
         //write initial sim data
         simSteps.push_back({
             .hit = false,

@@ -54,7 +54,7 @@ Coord getInterpolatedCoords(
 Coord getPredictedTargetCoords (
     float& currentTime, 
     float& timePeriod, 
-    const std::vector<Coord>& coordInTime, 
+    const std::vector<Coord>& coordInTime,
     const Coord& target,
     float& totalTime
  ) {
@@ -180,7 +180,7 @@ float getAmmoHorizontalFlightDistance(
     const float& ammoFlightTime,
     const AmmoParams& ammo
 ) {
-    const float g = 9.81f; 
+    const float g = 9.81f;
     float ammoHorizontalFlightDistance = attackSpeed * ammoFlightTime
         - pow(ammoFlightTime, 2) * ammo.drag * attackSpeed / (2 * ammo.mass)
         + pow(ammoFlightTime, 3) * (6 * ammo.drag * g * ammo.lift * ammo.mass - 6 * pow(ammo.drag, 2) * (pow(ammo.lift, 2) - 1) * attackSpeed) / (36 * pow(ammo.mass, 2))
@@ -266,7 +266,7 @@ std::vector<std::vector<Coord>> fillTargets(json& targetsJSON) {
 
     std::vector<std::vector<Coord>> targets;
     for (int i = 0; i < targetsCount; i++) {
-        std::vector<Coord> track; 
+        std::vector<Coord> track;
         for (int j = 0; j < timeSteps; j++) {
             track.push_back({
                 targetsJSON["targets"][i]["positions"][j]["x"],
@@ -284,7 +284,7 @@ float getAmmoFlightTime(
     const DroneConfig& droneConfig,
     const AmmoParams& ammo
 ) {
-    const float g = 9.81f; 
+    const float g = 9.81f;
     float a = ammo.drag * g * ammo.mass - 2 * pow(ammo.drag, 2) * ammo.lift * droneConfig.attackSpeed;
     float b = -3 * g * pow(ammo.mass, 2) + 3 * ammo.drag * ammo.lift * ammo.mass * droneConfig.attackSpeed;
     float c = 6 * pow(ammo.mass, 2) * droneConfig.altitude;

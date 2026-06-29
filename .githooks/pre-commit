@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Pre-commit hook: перевіряє форматування C/C++ файлів через clang-format.
+# Вмикається командою: git config core.hooksPath .githooks
+set -euo pipefail
+
+if ! command -v clang-format >/dev/null 2>&1; then
+  echo "pre-commit: clang-format wasn't found in PATH, skip checking." >&2
+  exit 0
+fi
+
+staged=$(git diff --cached --name-only --diff-filter=ACMR \
+  | grep -E '\.(cpp|cc|cxx|hpp|hh|hxx|h)$' || true)
+
+if [ -z "$staged" ]; then
+  exit 0
+fi
+
+bad=()
+while IFS= read -r f; do
+  [ -z "$f" ] && continue
+  if ! diff -q <(clang-format "$f") "$f" >/dev/null 2>&1; then
+    bad+=("$f")
+  fi
+done <<< "$staged"
+
+if [ "${#bad[@]}" -ne 0 ]; then
+  echo "pre-commit: next files weren't formatted with clang-format:" >&2
+  for f in "${bad[@]}"; do
+    echo "  $f" >&2
+  done
+  echo "" >&2
+  echo "Format files:  clang-format -i ${bad[*]}" >&2
+  echo "Then:       git add ${bad[*]} && git commit ..." >&2
+  exit 1
+fi
