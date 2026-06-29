@@ -18,6 +18,7 @@ add_library(drone_simulation_lib
     src/drone_physics.cpp
     src/port_controllers/uart_port.cpp
     src/port_controllers/gpio_controller.cpp
+    src/drone_controller.cpp
 )
 
 find_package(Threads REQUIRED)

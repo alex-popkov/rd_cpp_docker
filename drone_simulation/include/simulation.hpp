@@ -8,13 +8,19 @@
 
 using json = nlohmann::json;
 
-enum class DroneStates { Stopped, Turning, Accelerating, Moving, Decelerating };
+// order is important
+// 0 STOPPED
+//  1 ACCELERATING
+//  2 DECELERATING
+//  3 TURNING
+//  4 MOVING
+
+enum class DroneStates { Stopped, Accelerating, Decelerating, Turning, Moving };
 
 struct DroneCommand {
   DroneStates state;
   float angleSpeed;
 };
-
 struct Coord {
   float x;
   float y;
@@ -113,15 +119,18 @@ struct Target {
   Coord pos;
   Coord velocity;
 };
+
 struct DroneTelemetry {
   Coord pos;
   float speed;
   float direction;
   float timeSecSinceStart;
+  DroneStates state;
 };
 
 struct MissionResult {
-  dlink::Control control;
+  Coord firePoint;
+  Coord aimPoint;
   bool shouldDrop;
   int bestTargetIndex;
 };
@@ -172,3 +181,5 @@ float length(const Coord& coord);
 Coord normalize(const Coord& coord);
 
 dlink::Control computeControl(const dlink::Telemetry& telem, const dlink::TargetPos& target);
+
+DroneTelemetry mapDlinkTelemetry(const dlink::Telemetry& telemetry);

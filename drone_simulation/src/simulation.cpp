@@ -305,3 +305,12 @@ dlink::Control computeControl(const dlink::Telemetry& telemetry, const dlink::Ta
 
   return dlink::Control{accel, turnRate};
 }
+
+auto mapDlinkTelemetry(const dlink::Telemetry& telemetry) -> DroneTelemetry
+{
+  return {.pos = {telemetry.x, telemetry.y},
+          .speed = telemetry.speed,
+          .direction = telemetry.dir,
+          .timeSecSinceStart = telemetry.t_ms / 1000.0f,
+          .state = static_cast<DroneStates>(telemetry.state)};
+}
