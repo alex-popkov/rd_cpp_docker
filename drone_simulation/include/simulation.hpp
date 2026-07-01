@@ -180,6 +180,4 @@ float length(const Coord& coord);
 
 Coord normalize(const Coord& coord);
 
-dlink::Control computeControl(const dlink::Telemetry& telem, const dlink::TargetPos& target);
-
 DroneTelemetry mapDlinkTelemetry(const dlink::Telemetry& telemetry);

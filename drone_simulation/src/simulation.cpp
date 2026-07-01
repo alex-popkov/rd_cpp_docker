@@ -263,32 +263,6 @@ Coord normalize(const Coord& coord)
   return coord / length(coord);
 }
 
-dlink::Control computeControl(const dlink::Telemetry& telemetry, const dlink::TargetPos& target)
-{
-  float dx = target.x - telemetry.x;
-  float dy = target.y - telemetry.y;
-
-  float desiredDir = std::atan2(dy, dx);
-
-  float deltaAngle = normalizeAngle(desiredDir - telemetry.dir);
-
-  // turnRate — P-регулятор
-  // TODO: check if it's needed
-  float Kp = 2.0f;
-  float turnRate = std::clamp(Kp * deltaAngle, -1.0f, 1.0f);
-
-  // accel — газ або гальмо залежно від курсу
-  float accel;
-  if (std::fabs(deltaAngle) > 0.3f) {
-    accel = 0.2f;  // не розганятись поки не повернулись
-  }
-  else {
-    accel = 1.0f;  // курс правильний — повний газ
-  }
-
-  return dlink::Control{accel, turnRate};
-}
-
 auto mapDlinkTelemetry(const dlink::Telemetry& telemetry) -> DroneTelemetry
 {
   return {.pos = {telemetry.x, telemetry.y},

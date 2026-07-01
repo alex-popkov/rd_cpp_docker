@@ -139,7 +139,6 @@ auto MissionProcessor::checkDrop(const DroneTelemetry& telemetry, const Coord& t
   float currentHorizDist = getAmmoHorizontalFlightDistance(telemetry.speed, this->ammoFlightTime, this->ammo);
   Coord bombLandCoord = getBombLandCoord(telemetry, currentHorizDist);
 
-  // ціль рухається, поки бомба летить ammoFlightTime — порівнюємо з тим, де ціль БУДЕ
   Coord predictedTarget = targetPos + targetVelocity * this->ammoFlightTime;
   float bombMissDistance = getDistanceToTarget(bombLandCoord, predictedTarget);
 
