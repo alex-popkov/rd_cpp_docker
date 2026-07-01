@@ -10,6 +10,7 @@
 #include "port_controllers/gpio_controller.hpp"
 #include "drone_controller.hpp"
 #include "interfaces/config_loader.hpp"
+#include "log.hpp"
 
 auto main(int argc, char* argv[]) -> int
 {
@@ -39,7 +40,7 @@ auto main(int argc, char* argv[]) -> int
       }
     }
 
-    std::cout << "UART: " << uartDev << " GPIO: " << gpioChip << " START: " << startLine << " DROP: " << dropLine << std::endl;
+    DEBUG("UART: " << uartDev << " GPIO: " << gpioChip << " START: " << startLine << " DROP: " << dropLine);
 
     auto loader = createLoader(LoaderType::FILE, configPath, "");
     loader->load();
@@ -48,14 +49,14 @@ auto main(int argc, char* argv[]) -> int
     MissionProcessor missionProcessor(std::move(solver), droneConfig);
     DroneController droneController(droneConfig);
 
-    std::cout << "Config: attackSpeed=" << droneConfig.attackSpeed << " accelPath=" << droneConfig.accelPath
-              << " angularSpeed=" << droneConfig.angularSpeed << std::endl;
+    DEBUG("Config: attackSpeed=" << droneConfig.attackSpeed << " accelPath=" << droneConfig.accelPath
+                                 << " angularSpeed=" << droneConfig.angularSpeed);
 
     UartPort uart(uartDev.c_str());
     GpioController gpio(gpioChip.c_str(), startLine, dropLine);
 
     gpio.signalStart();
-    std::cout << "START signal sent, waiting for data..." << std::endl;
+    LOG("START signal sent, waiting for data...");
 
     dlink::AmmoCfg ammo{};
     bool ammoReceived = false;
@@ -88,11 +89,10 @@ auto main(int argc, char* argv[]) -> int
           case dlink::PKT_TELEMETRY: {
             std::memcpy(&telemetry, payload, sizeof(telemetry));
 
-            std::cout << "t=" << telemetry.t_ms << " pos=(" << telemetry.x << "," << telemetry.y << ")" << " speed=" << telemetry.speed
-                      << " dir=" << telemetry.dir << " z=" << telemetry.z << " state=" << (int)telemetry.state << std::endl;
+            DEBUG("t=" << telemetry.t_ms << " pos=(" << telemetry.x << "," << telemetry.y << ")" << " speed=" << telemetry.speed
+                       << " dir=" << telemetry.dir << " z=" << telemetry.z << " state=" << (int)telemetry.state);
 
             if (ammoReceived && !mpInitialized) {
-              std::cout << "MP init with altitude=" << telemetry.z << std::endl;
               missionProcessor.init(ammo, telemetry.z);
               mpInitialized = true;
             }
@@ -102,7 +102,7 @@ auto main(int argc, char* argv[]) -> int
               MissionResult result = missionProcessor.process(telemetry, targetPositions, targetCount);
 
               if (result.shouldDrop && !dropped) {
-                std::cout << "DROP!" << std::endl;
+                LOG("DROP!");
                 gpio.signalDrop();
                 dropped = true;
               }
@@ -122,8 +122,8 @@ auto main(int argc, char* argv[]) -> int
             ammoReceived = true;
             targetCount = ammo.nTargets;
             targetPositions.resize(targetCount);
-            std::cout << "AMMO: " << ammo.name << " mass=" << ammo.mass << " drag=" << ammo.drag << " lift=" << ammo.lift
-                      << " hitRadius=" << ammo.hitRadius << " targets=" << (int)ammo.nTargets << std::endl;
+            LOG("AMMO: " << ammo.name << " mass=" << ammo.mass << " drag=" << ammo.drag << " lift=" << ammo.lift
+                         << " hitRadius=" << ammo.hitRadius << " targets=" << (int)ammo.nTargets);
             break;
           }
 

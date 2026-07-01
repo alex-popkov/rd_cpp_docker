@@ -3,6 +3,7 @@
 #include <cmath>
 #include <algorithm>
 #include "mission_processor.hpp"
+#include "log.hpp"
 
 MissionProcessor::MissionProcessor(std::unique_ptr<IBallisticSolver> solver, const DroneConfig& config)
   : ballisticSolver(std::move(solver))
@@ -20,8 +21,6 @@ auto MissionProcessor::init(const dlink::AmmoCfg& ammoCfg, float altitude) -> vo
   this->ammoHorizontalFlightDistance = getAmmoHorizontalFlightDistance(this->droneConfig.attackSpeed, this->ammoFlightTime, this->ammo);
 
   this->initialized = true;
-
-  std::cout << "MP init: flightTime=" << this->ammoFlightTime << " horizDist=" << this->ammoHorizontalFlightDistance << std::endl;
 }
 
 auto MissionProcessor::process(const dlink::Telemetry& telemetry,
@@ -144,8 +143,8 @@ auto MissionProcessor::checkDrop(const DroneTelemetry& telemetry, const Coord& t
   Coord predictedTarget = targetPos + targetVelocity * this->ammoFlightTime;
   float bombMissDistance = getDistanceToTarget(bombLandCoord, predictedTarget);
 
-  std::cout << "  CD: miss=" << bombMissDistance << " predTgt=(" << predictedTarget.x << "," << predictedTarget.y << ")" << " bomb=("
-            << bombLandCoord.x << "," << bombLandCoord.y << ")" << " hd=" << currentHorizDist << std::endl;
+  DEBUG("  CD: miss=" << bombMissDistance << " predTgt=(" << predictedTarget.x << "," << predictedTarget.y << ")" << " bomb=("
+                      << bombLandCoord.x << "," << bombLandCoord.y << ")" << " hd=" << currentHorizDist);
 
   return bombMissDistance <= this->hitRadius && telemetry.speed >= this->droneConfig.attackSpeed;
 }

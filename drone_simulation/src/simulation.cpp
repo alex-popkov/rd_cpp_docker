@@ -7,21 +7,6 @@
 
 using json = nlohmann::json;
 
-#define ENABLE_LOG 1
-#define ENABLE_DEBUG 0
-
-#if ENABLE_LOG
-#define LOG(msg) std::cout << "[LOG] " << msg << std::endl
-#else
-#define LOG(msg)
-#endif
-
-#if ENABLE_DEBUG
-#define DEBUG(msg) std::cout << "[DEBUG] " << msg << std::endl
-#else
-#define DEBUG(msg)
-#endif
-
 float getDistanceToTarget(const Coord& target, const Coord& posiiton)
 {
   return sqrt(pow(target.x - posiiton.x, 2) + pow(target.y - posiiton.y, 2));
@@ -200,8 +185,6 @@ DroneConfig readDroneConfig(const std::string& path)
   };
 
   droneConfig.ammoName = configJSON["ammo"].get<std::string>();
-
-  DEBUG("ammo config: " << droneConfig.ammoName);
 
   return droneConfig;
 }
