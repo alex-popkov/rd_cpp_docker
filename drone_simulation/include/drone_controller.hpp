@@ -1,6 +1,5 @@
 #pragma once
 #include "simulation.hpp"
-#include "drone_link.hpp"
 
 class DroneController {
 public:

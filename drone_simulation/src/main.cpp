@@ -9,6 +9,7 @@
 #include "port_controllers/uart_port.hpp"
 #include "port_controllers/gpio_controller.hpp"
 #include "drone_controller.hpp"
+#include "interfaces/config_loader.hpp"
 
 auto main(int argc, char* argv[]) -> int
 {

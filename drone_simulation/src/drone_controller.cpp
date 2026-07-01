@@ -42,5 +42,6 @@ auto DroneController::computeControl(const DroneTelemetry& telemetry, const Coor
   else {
     accel = 1.0f;
   }
+
   return dlink::Control{accel, turnRate};
 }

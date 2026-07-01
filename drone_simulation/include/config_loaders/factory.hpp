@@ -1,10 +1,11 @@
 #pragma once
-#include <cstring>
 #include <memory>
-#include "simulation.hpp"
-#include "interfaces/ballistic_solver.hpp"
-#include "interfaces/target_provider.hpp"
-#include "interfaces/config_loader.hpp"
+#include <string>
+
+struct DroneConfig;
+class IBallisticSolver;
+class ITargetProvider;
+class IConfigLoader;
 
 enum class SolverType { ANALYTICAL, TABLE };
 enum class ProviderType { JSON, THREAD_SAFE };
