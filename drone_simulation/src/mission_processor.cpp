@@ -19,8 +19,9 @@ auto MissionProcessor::init(std::unique_ptr<IConfigLoader> configLoader) -> void
   this->droneConfig = configLoader->getConfig();
   this->ammo = configLoader->getAmmoParams();
 
-  this->ammoFlightTime = getAmmoFlightTime(this->droneConfig, this->ammo);
-  this->ammoHorizontalFlightDistance = getAmmoHorizontalFlightDistance(this->droneConfig.attackSpeed, this->ammoFlightTime, this->ammo);
+  BallisticResult ballisticResult = this->ballisticSolver->solve(this->ammo);
+  this->ammoFlightTime = ballisticResult.flightTime;
+  this->ammoHorizontalFlightDistance = ballisticResult.hDist;
   this->acceleration = this->droneConfig.attackSpeed * this->droneConfig.attackSpeed / (2.0f * this->droneConfig.accelPath);
 }
 
@@ -48,7 +49,6 @@ auto MissionProcessor::step() -> SimulationStep
   }
 
   if (bestTargetIndex < 0) {
-    std::cout << "No valid target at this step, skipping" << std::endl;
     ++this->currentStep;
     this->currentTime += this->droneConfig.simTimeStep;
 
@@ -159,7 +159,6 @@ auto MissionProcessor::evaluateTarget(int targetIndex, const DroneTelemetry& tel
 
   float distanceToTarget = getDistanceToTarget(target, telemetry.pos);
   if (distanceToTarget < 1e-3f) {
-    std::cout << "Distance to the target " << targetIndex << " is near or less then 0\n" << std::endl;
     return INFINITY;
   }
   float ratio = getRatio(distanceToTarget, this->ammoHorizontalFlightDistance);
@@ -173,7 +172,6 @@ auto MissionProcessor::evaluateTarget(int targetIndex, const DroneTelemetry& tel
 
   float newDistanceToTarget = getDistanceToTarget(predictedTarget, telemetry.pos);
   if (newDistanceToTarget < 1e-3f) {
-    std::cout << "Predicted distance to the target " << targetIndex << " is near or less then 0\n" << std::endl;
     return INFINITY;
   }
 
@@ -210,11 +208,6 @@ auto MissionProcessor::getSimulationStep(int targetIndex, const Coord& fireCoord
   Coord aimPoint = telemetry.pos + dir * this->ammoHorizontalFlightDistance;
 
   bool isHit = bombMissDistance < this->droneConfig.hitRadius || bombLandCoord == targetAtImpact;
-
-  if (isHit) {
-    std::cout << (bombLandCoord == targetAtImpact ? "Direct hit" : "Drone hit the target. Bomb miss: ")
-              << (bombLandCoord == targetAtImpact ? "" : std::to_string(bombMissDistance)) << std::endl;
-  }
 
   return {.hit = isHit,
           .target = targetIndex,

@@ -5,12 +5,10 @@ AnalyticalSolver::AnalyticalSolver(const DroneConfig& config)
 {
 }
 
-auto AnalyticalSolver::solve(const Coord& dronePosition, const Coord& targetPosition, const AmmoParams& ammo) -> Coord
+auto AnalyticalSolver::solve(const AmmoParams& ammo) -> BallisticResult
 {
   float flightTime = getAmmoFlightTime(droneConfig, ammo);
-  float ammoHorizontalFlightDistance = getAmmoHorizontalFlightDistance(droneConfig.attackSpeed, flightTime, ammo);
-  float distanceToTarget = getDistanceToTarget(targetPosition, dronePosition);
-  float ratio = getRatio(distanceToTarget, ammoHorizontalFlightDistance);
+  float hDist = getAmmoHorizontalFlightDistance(droneConfig.attackSpeed, flightTime, ammo);
 
-  return getFireCoords(targetPosition, dronePosition, std::max(ratio, 0.01f));
+  return {.flightTime = flightTime, .hDist = hDist};
 }

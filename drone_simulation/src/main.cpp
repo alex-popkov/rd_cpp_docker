@@ -9,7 +9,7 @@
 
 using json = nlohmann::json;
 
-#define ENABLE_LOG 1
+#define ENABLE_LOG 0
 #define ENABLE_DEBUG 0
 
 #if ENABLE_LOG
@@ -44,6 +44,12 @@ auto main(int argc, char* argv[]) -> int
 
     SolverType solverType = (solverArg == "analytical") ? SolverType::ANALYTICAL : SolverType::TABLE;
     auto ballisticSolver = createSolver(solverType, droneConfig, ballisticTablePath);
+
+    if (ballisticSolver == nullptr) {
+      LOG("Error: " << "Unknown ballistic solver");
+
+      return 1;
+    }
 
     MissionProcessor missionProcessor(std::move(targets), std::move(ballisticSolver), physicsPtr);
     missionProcessor.init(std::move(loader));

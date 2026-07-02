@@ -7,7 +7,7 @@
 
 using json = nlohmann::json;
 
-#define ENABLE_LOG 1
+#define ENABLE_LOG 0
 #define ENABLE_DEBUG 0
 
 #if ENABLE_LOG
