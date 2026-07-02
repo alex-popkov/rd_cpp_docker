@@ -41,3 +41,5 @@ Thumbs.db
 
 # Clangd index cache
 .cache/
+
+simulation.json

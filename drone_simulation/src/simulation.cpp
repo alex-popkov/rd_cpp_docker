@@ -11,15 +11,15 @@ using json = nlohmann::json;
 #define ENABLE_DEBUG 0
 
 #if ENABLE_LOG
-#define LOG(msg) std::cout << "[LOG] " << msg << std::endl
+  #define LOG(msg) std::cout << "[LOG] " << msg << std::endl
 #else
-#define LOG(msg)
+  #define LOG(msg)
 #endif
-
+ 
 #if ENABLE_DEBUG
-#define DEBUG(msg) std::cout << "[DEBUG] " << msg << std::endl
+  #define DEBUG(msg) std::cout << "[DEBUG] " << msg << std::endl
 #else
-#define DEBUG(msg)
+  #define DEBUG(msg)
 #endif
 
 float getDistanceToTarget(const Coord& target, const Coord& posiiton)
