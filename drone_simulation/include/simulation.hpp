@@ -7,14 +7,6 @@
 
 using json = nlohmann::json;
 
-enum DroneState {
-    STOPPED,
-    ACCELERATING,
-    DECELERATING,
-    TURNING,
-    MOVING
-};
-
 struct Coord {
 	float x;
 	float y;
@@ -76,21 +68,28 @@ struct DroneConfig {
 	float turnThreshold;
 };
 
-struct DroneMotion {
+struct DroneContext {
+    float directionToTarget;
+    float prevDirectionToTarget;    
     float speed = 0.0f;
-    float dir;
-    Coord pos; 
-    DroneState state = STOPPED;
+    float direction;
+    float acceleration;
+    float timeToStop;
+    Coord position;
+    const DroneConfig* config;
 };
 
 struct SimulationStep {
+    bool hit = false;
     int target;
+    float droneSpeed = 0.0f;
+    float droneDirection;
     Coord dropPoint;
 	Coord aimPoint;
 	Coord predictedTarget;
-    DroneMotion droneMotion;
+    Coord dronePosition;
+    std::string droneState;
 };
-
 
 float getDistanceToTarget(
     const Coord& target, const Coord& posiiton
@@ -123,44 +122,9 @@ float turnDrone(
     float droneDir
 );
 
-float getTimeToStop(
-    const float& attackSpeed,
-    const float& acceleration,
-    const float& prevDirToTarget,
-    const float& angularSpeed,
-    const DroneMotion& droneMotion
-);
-
 float getRatio(const float& distanceToTarget, const float& ammoHorizontalFlightDistance);
 
-
-DroneState updateDroneState(
-    const DroneState& droneState, 
-    const float& deltaAngle, 
-    const float& turnThreshold,
-    const float& droneSpeed,
-    const float& attackSpeed
-);
-
-DroneMotion updateDroneVelocity(
-    const float& acceleration,
-    const float& simTimeStep,
-    const float& attackSpeed,
-    const float& angularSpeed,
-    const float& deltaAngle,
-    DroneMotion droneMotion
-);
-
-
-DroneMotion updateDroneMotion(
-    const float& acceleration,
-    const float& simTimeStep,
-    const float& attackSpeed,
-    const float& angularSpeed,
-    const float& dirToTarget,
-    const float& turnThreshold,
-    DroneMotion droneMotion
-);
+auto updateDronePosition(const DroneContext& context) -> Coord;
 
 float getManeuveringTime(
     const float& distanceToTarget, 
@@ -171,7 +135,7 @@ float getManeuveringTime(
 );
 
 Coord getBombLandCoord(
-    DroneMotion& droneMotion,
+    const DroneContext& droneContext,
     const float& ammoHorizontalFlightDistance
 );
 

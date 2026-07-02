@@ -5,6 +5,7 @@
 #include "simulation.hpp"
 #include "mission_processor.hpp"
 #include "config_loaders/factory.hpp"
+#include "drone_states/state_stopped.hpp"
 
 using json = nlohmann::json;
 
@@ -25,39 +26,36 @@ using json = nlohmann::json;
 
 
  auto main(int argc, char* argv[]) -> int {
-    bool failed = false;
-    IConfigLoader* loader = nullptr;
-    ITargetProvider* targets = nullptr;
-    IBallisticSolver* ballisticSolver = nullptr;
-    std::vector<SimulationStep> simSteps;
-
-    const std::string configPath = (argc > 1) ? argv[1] : "config.json";
-    const std::string ammoPath = (argc > 2) ? argv[2] : "ammo.json";
-    const std::string targetsPath = (argc > 3) ? argv[3] : "targets.json";
-
     try {
-        loader  = createLoader(LoaderType::FILE, configPath, ammoPath);
-        targets = createProvider(ProviderType::JSON, targetsPath);
-        
+        const std::string configPath = (argc > 1) ? argv[1] : "config.json";
+        const std::string ammoPath = (argc > 2) ? argv[2] : "ammo.json";
+        const std::string targetsPath = (argc > 3) ? argv[3] : "targets.json";
+        const std::string solverArg = (argc > 4) ? argv[4] : "analytical";
+        const std::string ballisticTablePath = (argc > 5) ? argv[5] : "ballistic_table.txt";
+
+        auto loader  = createLoader(LoaderType::FILE, configPath, ammoPath);
+        auto targets = createProvider(ProviderType::JSON, targetsPath);
+
         loader->load();
         DroneConfig droneConfig = loader->getConfig();
+
+        SolverType solverType = (solverArg == "analytical") ? SolverType::ANALYTICAL : SolverType::TABLE;
+        auto ballisticSolver = createSolver(solverType, droneConfig, ballisticTablePath);
+        std::vector<SimulationStep> simSteps;
         
-        ballisticSolver = createSolver(SolverType::ANALYTICAL, droneConfig);
-        
-        MissionProcessor missionProcessor(targets, ballisticSolver);
-        missionProcessor.init(loader);
-        
+        MissionProcessor missionProcessor(std::move(targets), std::move(ballisticSolver));
+        missionProcessor.init(std::move(loader));
+
         //write initial sim data
         simSteps.push_back({
+            .hit = false,
             .target = -1,
+            .droneDirection = droneConfig.initialDir,
             .dropPoint = {0, 0},
             .aimPoint = {0, 0},
             .predictedTarget = {0, 0},
-            .droneMotion = {
-                .dir = droneConfig.initialDir,
-                .pos = droneConfig.startPos,
-                .state = STOPPED
-            }
+            .dronePosition = droneConfig.startPos,
+            .droneState = StateStopped::NAME
         });
 
         // simulation loop
@@ -69,15 +67,12 @@ using json = nlohmann::json;
         }
         
         writeSimulationJSONFile(simSteps);
+
+        return 0;
     } catch (const std::exception& error) {
         LOG("Error: " << error.what());
-        failed = true;
+
+        return 1;
     }
-
-    delete loader;
-    delete targets;
-    delete ballisticSolver;
-
-    return failed ? 1 : 0;
 }
 

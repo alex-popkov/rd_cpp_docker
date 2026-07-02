@@ -1,208 +1,192 @@
 
-#include "mission_processor.hpp"
 #include <iostream>
+#include "mission_processor.hpp"
+#include "drone_states/state_stopped.hpp"
 
-MissionProcessor::MissionProcessor(
-    ITargetProvider* targetProvider,
-    IBallisticSolver* solver
-): targets(targetProvider), ballisticSolver(solver) {
+MissionProcessor::MissionProcessor(std::unique_ptr<ITargetProvider> targetProvider, std::unique_ptr<IBallisticSolver> solver)
+  : targets(std::move(targetProvider))
+  , ballisticSolver(std::move(solver))
+{
 }
 
-auto MissionProcessor::init(IConfigLoader* configLoader) -> void { 
-    configLoader->load();
-    droneConfig = configLoader->getConfig();
-    ammo = configLoader->getAmmoParams();
+auto MissionProcessor::init(std::unique_ptr<IConfigLoader> configLoader) -> void
+{
+  configLoader->load();
+  this->droneConfig = configLoader->getConfig();
+  this->ammo = configLoader->getAmmoParams();
 
-    ammoFlightTime = getAmmoFlightTime(droneConfig, ammo);
-    ammoHorizontalFlightDistance =  getAmmoHorizontalFlightDistance(
-        droneConfig.attackSpeed,
-        ammoFlightTime,
-        ammo
-    );
-    acceleration = droneConfig.attackSpeed * droneConfig.attackSpeed / (2.0f * droneConfig.accelPath);
-    droneMotion = {
-        .speed = 0.0f,
-        .dir = droneConfig.initialDir,
-        .pos = {
-            .x = droneConfig.startPos.x,
-            .y = droneConfig.startPos.y
-        },
-        .state = STOPPED
-    };
+  this->ammoFlightTime = getAmmoFlightTime(this->droneConfig, this->ammo);
+  this->ammoHorizontalFlightDistance = getAmmoHorizontalFlightDistance(this->droneConfig.attackSpeed, this->ammoFlightTime, this->ammo);
+  this->droneContext = {
+    .directionToTarget = 0.0f,
+    .prevDirectionToTarget = 0.0f,
+    .speed = 0.0f,
+    .direction = this->droneConfig.initialDir,
+    .acceleration = this->droneConfig.attackSpeed * this->droneConfig.attackSpeed / (2.0f * this->droneConfig.accelPath),
+    .timeToStop = 0.0f,
+    .position = this->droneConfig.startPos,
+    .config = &this->droneConfig};
+  this->state = std::make_unique<StateStopped>();
 }
 
-
-auto MissionProcessor::hasNext() -> bool { 
-    return currentStep <= MAX_STEPS && !hit;
+auto MissionProcessor::hasNext() -> bool
+{
+  return this->currentStep <= this->MAX_STEPS && !this->hit;
 }
 
-auto MissionProcessor::getCurrentStep() -> int { 
-    return currentStep;
+auto MissionProcessor::getCurrentStep() -> int
+{
+  return this->currentStep;
 }
 
-auto MissionProcessor::step() -> SimulationStep {
-    int bestTargetIndex = -1;
-    float bestTotalTime = INFINITY;
-    float bestDroneToFireTime = 0.0f;
-    Coord bestFireCoord = {
-        .x = 0,
-        .y = 0
-    };
+auto MissionProcessor::step() -> SimulationStep
+{
+  int bestTargetIndex = -1;
+  float bestTotalTime = INFINITY;
+  Coord bestFireCoord = {.x = 0, .y = 0};
 
-    //iteration by targets
-    for (int i = 0; i < targets->getTargetCount(); ++i) {
-        Coord target = getInterpolatedCoords(currentTime, droneConfig.arrayTimeStep, targets->getTarget(i));
+  for (int i = 0; i < this->targets->getTargetCount(); ++i) {
+    Coord fireCoord;
+    float totalTime = this->evaluateTarget(i, this->currentTime, fireCoord);
 
-        // balistic
-        float distanceToTarget = getDistanceToTarget(target, droneMotion.pos);
-        if (distanceToTarget < 1e-6f) {
-            std::cout << "Distance to the target " << i << " is near or less then 0\n" << std::endl;
-            continue;
-        }
-        float ratio = getRatio(distanceToTarget, ammoHorizontalFlightDistance);
-
-        Coord fireCoord = getFireCoords(target, droneMotion.pos, std::max(ratio, 0.01f));
-        float distanceToFire = getDistanceToTarget(fireCoord, droneMotion.pos);
-        float droneToFireTime = distanceToFire / droneConfig.attackSpeed;
-        float totalTimeRough = droneToFireTime + ammoFlightTime;
-
-        Coord predictedTarget = getPredictedTargetCoords(
-            currentTime, droneConfig.arrayTimeStep, targets->getTarget(i), target, totalTimeRough
-        );
-
-        //predicted balistic
-        float newDistanceToTarget = getDistanceToTarget(predictedTarget, droneMotion.pos);
-        if (newDistanceToTarget < 1e-6f) {
-            std::cout << "Predicted distance to the target " << i << " is near or less then 0\n" << std::endl;
-            continue;
-        }
-
-        float newRatio = getRatio(newDistanceToTarget, ammoHorizontalFlightDistance);
-        Coord newFireCoord = getFireCoords(predictedTarget, droneMotion.pos, std::max(newRatio, 0.01f));
-        float newDistanceToFire = getDistanceToTarget(newFireCoord, droneMotion.pos);
-        float newDroneToFireTime = newDistanceToFire / droneConfig.attackSpeed;
-        float newTotalTime = newDroneToFireTime + ammoFlightTime;
-    
-        if (newRatio < 0) {
-            newTotalTime += getManeuveringTime(
-                newDistanceToTarget, 
-                ammoHorizontalFlightDistance,
-                droneConfig.attackSpeed,
-                acceleration,
-                droneConfig.angularSpeed
-            );
-        }
-
-        if (prevTargetIndex != i && prevTargetIndex != -1) {
-            newTotalTime += getTimeToStop(
-                droneConfig.attackSpeed, 
-                acceleration,  
-                prevDirToTarget, 
-                droneConfig.angularSpeed,
-                droneMotion
-            );
-        }
-
-        if (newTotalTime < bestTotalTime) {
-            bestTotalTime = newTotalTime;
-            bestTargetIndex = i;
-            bestFireCoord = newFireCoord;
-            bestDroneToFireTime = newDroneToFireTime;
-        }
+    if (totalTime < bestTotalTime) {
+      bestTotalTime = totalTime;
+      bestTargetIndex = i;
+      bestFireCoord = fireCoord;
     }
+  }
 
+  if (bestTargetIndex < 0) {
+    std::cout << "No valid target at this step, skipping" << std::endl;
+    ++this->currentStep;
+    this->currentTime += this->droneConfig.simTimeStep;
 
-    if (bestTargetIndex < 0) {
-        std::cout << "No valid target at this step, skipping"<< std::endl;
-        ++currentStep;
-        currentTime += droneConfig.simTimeStep;
+    SimulationStep emptyStep = {.hit = false,
+                                .target = -1,
+                                .droneSpeed = this->droneContext.speed,
+                                .droneDirection = this->droneContext.direction,
+                                .dropPoint = {0, 0},
+                                .aimPoint = {0, 0},
+                                .predictedTarget = {0, 0},
+                                .dronePosition = this->droneContext.position,
+                                .droneState = StateStopped::NAME};
 
-        SimulationStep emptyStep = {
-            .target          = -1,
-            .dropPoint       = {0, 0},
-            .aimPoint        = {0, 0},
-            .predictedTarget = {0, 0},
-            .droneMotion     = droneMotion
-        };
+    return emptyStep;
+  }
 
-        return emptyStep;
-    }
+  Coord deltaToFire = bestFireCoord - this->droneContext.position;
+  Coord dirVec = normalize(deltaToFire);
+  this->droneContext.prevDirectionToTarget = this->droneContext.directionToTarget;
+  this->droneContext.directionToTarget = atan2(dirVec.y, dirVec.x);
 
-    Coord deltaToFire = bestFireCoord - droneMotion.pos;
-    Coord dirVec = normalize(deltaToFire);
-    float dirToTarget = atan2(dirVec.y, dirVec.x);
+  auto nextState = this->state->execute(this->droneContext);
+  if (nextState)
+    this->state = std::move(nextState);
 
-    droneMotion = updateDroneMotion(
-        acceleration,
-        droneConfig.simTimeStep,
-        droneConfig.attackSpeed,
-        droneConfig.angularSpeed,
-        dirToTarget,
-        droneConfig.turnThreshold,
-        droneMotion
-    );
+  SimulationStep simulationStep = this->getSimulationStep(bestTargetIndex, bestFireCoord);
+  this->hit = simulationStep.hit;
 
-    Coord bombLandCoord = getBombLandCoord(droneMotion, ammoHorizontalFlightDistance);
-    Coord targetAtImpact = getInterpolatedCoords(
-        currentTime + bestDroneToFireTime + ammoFlightTime,
-        droneConfig.arrayTimeStep,
-        targets->getTarget(bestTargetIndex)
-    );
+  this->prevTargetIndex = bestTargetIndex;
+  this->currentStep++;
+  this->currentTime += this->droneConfig.simTimeStep;
 
-    float bombMissDistance = getDistanceToTarget(bombLandCoord, targetAtImpact);
-    Coord dir = { 
-        .x = std::cos(droneMotion.dir), 
-        .y = std::sin(droneMotion.dir) 
-    };
-
-    Coord aimPoint = droneMotion.pos + dir * ammoHorizontalFlightDistance;
-
-    SimulationStep simulationStep = {
-        .target = bestTargetIndex,
-        .dropPoint = bestFireCoord,
-        .aimPoint = aimPoint,
-        .predictedTarget = targetAtImpact,
-        .droneMotion = droneMotion
-    };
-
-    if (bombMissDistance < droneConfig.hitRadius) {
-        std::cout << "Drone hit the target. Bomb miss: " << bombMissDistance << std::endl;
-    
-        hit = true;
-    }
-
-    if (bombLandCoord == targetAtImpact) {
-        std::cout << "Direct hit"<< std::endl;
-
-        hit = true;
-    }
-
-    prevTargetIndex = bestTargetIndex;
-    prevDirToTarget = dirToTarget; 
-
-    currentStep++;
-    currentTime += droneConfig.simTimeStep;
-
-    return simulationStep;
+  return simulationStep;
 }
 
-auto MissionProcessor::reset() -> void {
-    hit = false;
-    prevTargetIndex = -1;
-    prevDirToTarget = droneConfig.initialDir;
-    currentStep = 1; 
-    currentTime = 0.0f;
-    droneMotion = {
-        .speed = 0.0f,
-        .dir = droneConfig.initialDir,
-        .pos = {
-            .x = droneConfig.startPos.x,
-            .y = droneConfig.startPos.y
-        },
-        .state = STOPPED
-    };
+auto MissionProcessor::reset() -> void
+{
+  this->hit = false;
+  this->prevTargetIndex = -1;
+  this->currentStep = 1;
+  this->currentTime = 0.0f;
+
+  this->droneContext = {.directionToTarget = 0.0f,
+                        .prevDirectionToTarget = this->droneConfig.initialDir,
+                        .speed = 0.0f,
+                        .direction = this->droneConfig.initialDir,
+                        .acceleration = this->droneContext.acceleration,
+                        .timeToStop = 0.0f,
+                        .position = this->droneConfig.startPos,
+                        .config = &this->droneConfig};
+
+  this->state = std::make_unique<StateStopped>();
 }
 
-auto MissionProcessor::changeSolver(IBallisticSolver* ballisticSolver) -> void {
-    this->ballisticSolver = ballisticSolver;
+auto MissionProcessor::changeSolver(std::unique_ptr<IBallisticSolver> ballisticSolver) -> void
+{
+  this->ballisticSolver = std::move(ballisticSolver);
+}
+
+auto MissionProcessor::evaluateTarget(int targetIndex, float currentTime, Coord& outFireCoord) -> float
+{
+  Coord target = getInterpolatedCoords(currentTime, this->droneConfig.arrayTimeStep, this->targets->getTarget(targetIndex));
+
+  float distanceToTarget = getDistanceToTarget(target, this->droneContext.position);
+  if (distanceToTarget < 1e-3f) {
+    std::cout << "Distance to the target " << targetIndex << " is near or less then 0\n" << std::endl;
+    return INFINITY;
+  }
+  float ratio = getRatio(distanceToTarget, this->ammoHorizontalFlightDistance);
+
+  Coord fireCoord = getFireCoords(target, this->droneContext.position, ratio);
+  float distanceToFire = getDistanceToTarget(fireCoord, this->droneContext.position);
+  float droneToFireTime = distanceToFire / this->droneConfig.attackSpeed;
+  float totalTimeRough = droneToFireTime + this->ammoFlightTime;
+
+  Coord predictedTarget =
+    getPredictedTargetCoords(currentTime, this->droneConfig.arrayTimeStep, this->targets->getTarget(targetIndex), target, totalTimeRough);
+
+  float newDistanceToTarget = getDistanceToTarget(predictedTarget, this->droneContext.position);
+  if (newDistanceToTarget < 1e-3f) {
+    std::cout << "Predicted distance to the target " << targetIndex << " is near or less then 0\n" << std::endl;
+    return INFINITY;
+  }
+
+  float newRatio = getRatio(newDistanceToTarget, this->ammoHorizontalFlightDistance);
+  outFireCoord = getFireCoords(predictedTarget, this->droneContext.position, newRatio);
+  float newDistanceToFire = getDistanceToTarget(outFireCoord, this->droneContext.position);
+  float newDroneToFireTime = newDistanceToFire / this->droneConfig.attackSpeed;
+  float totalTime = newDroneToFireTime + this->ammoFlightTime;
+
+  if (newRatio < 0) {
+    totalTime += getManeuveringTime(newDistanceToTarget,
+                                    this->ammoHorizontalFlightDistance,
+                                    this->droneConfig.attackSpeed,
+                                    this->droneContext.acceleration,
+                                    this->droneConfig.angularSpeed);
+  }
+
+  if (this->prevTargetIndex != targetIndex && this->prevTargetIndex != -1) {
+    totalTime += this->droneContext.timeToStop;
+  }
+
+  return totalTime;
+}
+
+auto MissionProcessor::getSimulationStep(int targetIndex, const Coord& fireCoord) -> SimulationStep
+{
+  Coord bombLandCoord = getBombLandCoord(this->droneContext, this->ammoHorizontalFlightDistance);
+  Coord targetAtImpact =
+    getInterpolatedCoords(this->currentTime + this->ammoFlightTime, this->droneConfig.arrayTimeStep, this->targets->getTarget(targetIndex));
+
+  float bombMissDistance = getDistanceToTarget(bombLandCoord, targetAtImpact);
+  Coord dir = {.x = std::cos(this->droneContext.direction), .y = std::sin(this->droneContext.direction)};
+  Coord aimPoint = this->droneContext.position + dir * this->ammoHorizontalFlightDistance;
+
+  bool isHit = bombMissDistance < this->droneConfig.hitRadius || bombLandCoord == targetAtImpact;
+
+  if (isHit) {
+    std::cout << (bombLandCoord == targetAtImpact ? "Direct hit" : "Drone hit the target. Bomb miss: ")
+              << (bombLandCoord == targetAtImpact ? "" : std::to_string(bombMissDistance)) << std::endl;
+  }
+
+  return {.hit = isHit,
+          .target = targetIndex,
+          .droneSpeed = this->droneContext.speed,
+          .droneDirection = this->droneContext.direction,
+          .dropPoint = fireCoord,
+          .aimPoint = aimPoint,
+          .predictedTarget = targetAtImpact,
+          .dronePosition = this->droneContext.position,
+          .droneState = this->state->name()};
 }
