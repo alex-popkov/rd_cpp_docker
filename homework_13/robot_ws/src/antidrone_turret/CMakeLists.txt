@@ -17,6 +17,9 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Target.msg"
   "msg/ActuatorStatus.msg"
   "srv/TriggerActuator.srv"
+  "msg/GimbalCommand.msg"
+  "msg/ServoCommand.msg"
+  "msg/TurretStatus.msg"
 )
 
 ament_auto_add_executable(target_track_publisher_node src/target_track_publisher_node.cpp)
