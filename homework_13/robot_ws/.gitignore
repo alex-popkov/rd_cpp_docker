@@ -1,0 +1,4 @@
+# ROS 2 colcon workspace artifacts — відтворюються з colcon build
+build/
+install/
+log/
