@@ -19,12 +19,8 @@ struct TargetTrackLoadResult {
 
 inline std::string trim_copy(std::string value)
 {
-  const auto first = std::find_if_not(value.begin(), value.end(), [](const unsigned char ch) {
-    return std::isspace(ch) != 0;
-  });
-  const auto last = std::find_if_not(value.rbegin(), value.rend(), [](const unsigned char ch) {
-    return std::isspace(ch) != 0;
-  }).base();
+  const auto first = std::find_if_not(value.begin(), value.end(), [](const unsigned char ch) { return std::isspace(ch) != 0; });
+  const auto last = std::find_if_not(value.rbegin(), value.rend(), [](const unsigned char ch) { return std::isspace(ch) != 0; }).base();
 
   if (first >= last) {
     return {};
@@ -35,9 +31,7 @@ inline std::string trim_copy(std::string value)
 
 inline std::string lowercase_copy(std::string value)
 {
-  std::transform(value.begin(), value.end(), value.begin(), [](const unsigned char ch) {
-    return static_cast<char>(std::tolower(ch));
-  });
+  std::transform(value.begin(), value.end(), value.begin(), [](const unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
   return value;
 }
 
@@ -62,7 +56,8 @@ inline bool parse_float_token(const std::string& token, float& value)
     std::size_t parsed_chars = 0;
     value = std::stof(trimmed, &parsed_chars);
     return parsed_chars == trimmed.size();
-  } catch (...) {
+  }
+  catch (...) {
     return false;
   }
 }
@@ -110,10 +105,8 @@ inline TargetTrackLoadResult load_target_track_csv(const std::filesystem::path& 
     }
 
     TargetSample sample;
-    if (!parse_bool_token(columns[0], sample.visible) ||
-        !parse_float_token(columns[1], sample.x) ||
-        !parse_float_token(columns[2], sample.y) ||
-        !parse_float_token(columns[3], sample.distance_m) ||
+    if (!parse_bool_token(columns[0], sample.visible) || !parse_float_token(columns[1], sample.x) ||
+        !parse_float_token(columns[2], sample.y) || !parse_float_token(columns[3], sample.distance_m) ||
         !parse_float_token(columns[4], sample.confidence)) {
       result.error = "invalid value at line " + std::to_string(line_number);
       return result;
@@ -147,9 +140,7 @@ inline void append_track_gap(std::vector<TargetSample>& samples)
   }
 }
 
-inline TargetTrackLoadResult load_target_track_csv_files(
-  const std::filesystem::path& directory,
-  const std::vector<std::string>& file_names)
+inline TargetTrackLoadResult load_target_track_csv_files(const std::filesystem::path& directory, const std::vector<std::string>& file_names)
 {
   TargetTrackLoadResult combined;
 
@@ -161,10 +152,7 @@ inline TargetTrackLoadResult load_target_track_csv_files(
       return combined;
     }
 
-    combined.samples.insert(
-      combined.samples.end(),
-      result.samples.begin(),
-      result.samples.end());
+    combined.samples.insert(combined.samples.end(), result.samples.begin(), result.samples.end());
     append_track_gap(combined.samples);
   }
 

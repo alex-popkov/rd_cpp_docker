@@ -17,9 +17,7 @@ constexpr auto kTriggerService = "/actuator/trigger";
 std::uint8_t to_message_state(const antidrone_turret::ActuatorState state)
 {
   using ActuatorStatus = antidrone_turret::msg::ActuatorStatus;
-  return state == antidrone_turret::ActuatorState::kReady
-           ? ActuatorStatus::READY
-           : ActuatorStatus::RELOADING;
+  return state == antidrone_turret::ActuatorState::kReady ? ActuatorStatus::READY : ActuatorStatus::RELOADING;
 }
 
 }  // namespace
@@ -36,32 +34,22 @@ public:
     const auto status_publish_hz = declare_parameter<double>("status_publish_hz", 2.0);
 
     status_publisher_ = create_publisher<ActuatorStatus>(kActuatorStatusTopic, 10);
-    trigger_service_ = create_service<TriggerActuator>(
-      kTriggerService,
-      [this](
-        const std::shared_ptr<TriggerActuator::Request> request,
-        std::shared_ptr<TriggerActuator::Response> response) {
-        on_trigger(request, response);
-      });
+    trigger_service_ =
+      create_service<TriggerActuator>(kTriggerService,
+                                      [this](const std::shared_ptr<TriggerActuator::Request> request,
+                                             std::shared_ptr<TriggerActuator::Response> response) { on_trigger(request, response); });
 
     const auto safe_hz = std::max(0.1, status_publish_hz);
-    const auto period = std::chrono::duration_cast<std::chrono::milliseconds>(
-      std::chrono::duration<double>(1.0 / safe_hz));
+    const auto period = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::duration<double>(1.0 / safe_hz));
     status_timer_ = create_wall_timer(period, [this]() { publish_status(); });
 
     publish_status();
 
-    RCLCPP_INFO(
-      get_logger(),
-      "serving %s and publishing %s",
-      kTriggerService,
-      kActuatorStatusTopic);
+    RCLCPP_INFO(get_logger(), "serving %s and publishing %s", kTriggerService, kActuatorStatusTopic);
   }
 
 private:
-  void on_trigger(
-    const std::shared_ptr<TriggerActuator::Request>& request,
-    const std::shared_ptr<TriggerActuator::Response>& response)
+  void on_trigger(const std::shared_ptr<TriggerActuator::Request>& request, const std::shared_ptr<TriggerActuator::Response>& response)
   {
     const auto result = actuator_.trigger();
     response->accepted = result.accepted;
@@ -72,12 +60,11 @@ private:
       return;
     }
 
-    RCLCPP_INFO(
-      get_logger(),
-      "trigger accepted confidence=%.2f distance_m=%.1f trigger_count=%u",
-      request->confidence,
-      request->distance_m,
-      result.trigger_count);
+    RCLCPP_INFO(get_logger(),
+                "trigger accepted confidence=%.2f distance_m=%.1f trigger_count=%u",
+                request->confidence,
+                request->distance_m,
+                result.trigger_count);
 
     publish_status();
     schedule_reload();

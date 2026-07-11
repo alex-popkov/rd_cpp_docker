@@ -20,32 +20,18 @@ public:
 
   explicit TargetSequence(std::vector<TargetSample> samples)
     : samples_(std::move(samples))
-  {}
-
-  [[nodiscard]] bool empty() const
   {
-    return samples_.empty();
   }
 
-  [[nodiscard]] std::size_t size() const
-  {
-    return samples_.size();
-  }
+  [[nodiscard]] bool empty() const { return samples_.empty(); }
 
-  [[nodiscard]] bool finished(bool repeat) const
-  {
-    return !repeat && next_index_ >= samples_.size();
-  }
+  [[nodiscard]] std::size_t size() const { return samples_.size(); }
 
-  [[nodiscard]] const TargetSample& current() const
-  {
-    return samples_.at(next_index_ % samples_.size());
-  }
+  [[nodiscard]] bool finished(bool repeat) const { return !repeat && next_index_ >= samples_.size(); }
 
-  void advance()
-  {
-    ++next_index_;
-  }
+  [[nodiscard]] const TargetSample& current() const { return samples_.at(next_index_ % samples_.size()); }
+
+  void advance() { ++next_index_; }
 
   void skip_to_next_track()
   {
@@ -62,7 +48,8 @@ public:
 
       if (!sample.visible) {
         passed_gap = true;
-      } else if (passed_gap) {
+      }
+      else if (passed_gap) {
         next_index_ = candidate_index;
         return;
       }

@@ -214,19 +214,13 @@ TEST(TargetTrackLoaderTest, LoadsDefaultTracksAsOneSequenceWithGaps)
   const auto source_dir = std::filesystem::path{ANTIDRONE_TURRET_SOURCE_DIR};
   const auto tracks_dir = source_dir / "tracks";
 
-  const auto result = antidrone_turret::load_target_track_csv_files(
-    tracks_dir,
-    antidrone_turret::default_target_track_files());
+  const auto result = antidrone_turret::load_target_track_csv_files(tracks_dir, antidrone_turret::default_target_track_files());
 
   ASSERT_TRUE(result.error.empty()) << result.error;
   EXPECT_GT(result.samples.size(), 50U);
 
   const auto gap_count = std::count_if(
-    result.samples.begin(),
-    result.samples.end(),
-    [](const antidrone_turret::TargetSample& sample) {
-      return !sample.visible;
-    });
+    result.samples.begin(), result.samples.end(), [](const antidrone_turret::TargetSample& sample) { return !sample.visible; });
   EXPECT_GE(gap_count, 4);
 }
 

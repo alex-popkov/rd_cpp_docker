@@ -16,20 +16,11 @@ struct TriggerResult {
 
 class ActuatorModel {
 public:
-  [[nodiscard]] ActuatorState state() const
-  {
-    return ready_ ? ActuatorState::kReady : ActuatorState::kReloading;
-  }
+  [[nodiscard]] ActuatorState state() const { return ready_ ? ActuatorState::kReady : ActuatorState::kReloading; }
 
-  [[nodiscard]] std::uint32_t trigger_count() const
-  {
-    return trigger_count_;
-  }
+  [[nodiscard]] std::uint32_t trigger_count() const { return trigger_count_; }
 
-  [[nodiscard]] bool ready() const
-  {
-    return ready_;
-  }
+  [[nodiscard]] bool ready() const { return ready_; }
 
   TriggerResult trigger()
   {
@@ -42,10 +33,7 @@ public:
     return TriggerResult{true, trigger_count_};
   }
 
-  void mark_ready()
-  {
-    ready_ = true;
-  }
+  void mark_ready() { ready_ = true; }
 
 private:
   bool ready_{true};

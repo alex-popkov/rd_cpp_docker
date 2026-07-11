@@ -28,17 +28,12 @@ public:
   TargetTrackSimulation(TargetSequence sequence, TargetTrackSimulationConfig config)
     : sequence_(std::move(sequence))
     , config_(config)
-  {}
-
-  [[nodiscard]] bool empty() const
   {
-    return sequence_.empty();
   }
 
-  [[nodiscard]] std::size_t size() const
-  {
-    return sequence_.size();
-  }
+  [[nodiscard]] bool empty() const { return sequence_.empty(); }
+
+  [[nodiscard]] std::size_t size() const { return sequence_.size(); }
 
   std::optional<PublishedTarget> next_target()
   {
@@ -51,17 +46,14 @@ public:
 
     if (!sample.visible) {
       hit_window_open_ = false;
-    } else if (sample.confidence >= config_.hit_confidence &&
-               sample.distance_m <= config_.hit_distance_m) {
+    }
+    else if (sample.confidence >= config_.hit_confidence && sample.distance_m <= config_.hit_distance_m) {
       hit_window_open_ = true;
     }
 
     sequence_.advance();
 
-    const auto reached_protected_zone =
-      sample.visible &&
-      sample.distance_m <= config_.impact_distance_m &&
-      !actuator_ready_;
+    const auto reached_protected_zone = sample.visible && sample.distance_m <= config_.impact_distance_m && !actuator_ready_;
 
     if (reached_protected_zone) {
       sequence_.skip_to_next_track();
@@ -72,9 +64,7 @@ public:
     return PublishedTarget{sample, reached_protected_zone};
   }
 
-  [[nodiscard]] bool apply_actuator_status(
-    const bool actuator_ready,
-    const std::uint32_t trigger_count)
+  [[nodiscard]] bool apply_actuator_status(const bool actuator_ready, const std::uint32_t trigger_count)
   {
     actuator_ready_ = actuator_ready;
 
