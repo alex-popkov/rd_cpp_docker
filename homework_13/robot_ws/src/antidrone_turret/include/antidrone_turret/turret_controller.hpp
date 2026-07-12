@@ -2,6 +2,9 @@
 
 namespace turret_controller {
 
+const float height = 240.0f;
+const float width = 320.0f;
+
 enum class ActuatorStatuses { READY, RELOADING };
 
 enum class TargetStates { TARGET_NONE, TARGET_LOW_CONFIDENCE, TARGET_LOCKED };
@@ -50,28 +53,28 @@ inline ServoCommand make_servo_command(float target_x)
 {
   ServoDirections direction = ServoDirections::CENTER;
 
-  if (target_x > 320) {
+  if (target_x > width) {
     direction = ServoDirections::RIGHT;
   }
-  else if (target_x < 320) {
+  else if (target_x < width) {
     direction = ServoDirections::LEFT;
   }
 
-  return {.target_x = target_x, .error_x = target_x - 320, .direction = direction};
+  return {.target_x = target_x, .error_x = target_x - width, .direction = direction};
 }
 
 inline GimbalCommand make_gimbal_command(float target_y)
 {
   GimbalDirections direction = GimbalDirections::CENTER;
 
-  if (target_y > 240) {
+  if (target_y > height) {
     direction = GimbalDirections::DOWN;
   }
-  else if (target_y < 240) {
+  else if (target_y < height) {
     direction = GimbalDirections::UP;
   }
 
-  return {.target_y = target_y, .error_y = 240 - target_y, .direction = direction};
+  return {.target_y = target_y, .error_y = height - target_y, .direction = direction};
 }
 
 inline TriggerStates make_trigger_decision(float distance_m, float max_distance_m, ActuatorStatuses actuatorStatus)
