@@ -12,6 +12,8 @@
 #include "antidrone_turret/msg/servo_command.hpp"
 #include "antidrone_turret/srv/trigger_actuator.hpp"
 
+using Turret = antidrone_turret::msg::TurretStatus;
+
 namespace {
 
 constexpr auto kTargetTopic = "/perception/target";
@@ -59,7 +61,6 @@ std::int8_t to_msg_direction(turret_controller::GimbalDirections direction)
 
 std::uint8_t to_msg_target_state(turret_controller::TargetStates state)
 {
-  using Turret = antidrone_turret::msg::TurretStatus;
   switch (state) {
     case turret_controller::TargetStates::TARGET_NONE: {
       return Turret::TARGET_NONE;
@@ -77,7 +78,6 @@ std::uint8_t to_msg_target_state(turret_controller::TargetStates state)
 
 std::uint8_t to_msg_action(turret_controller::ActionStates action)
 {
-  using Turret = antidrone_turret::msg::TurretStatus;
   switch (action) {
     case turret_controller::ActionStates::ACTION_IDLE: {
       return Turret::ACTION_IDLE;
@@ -91,7 +91,6 @@ std::uint8_t to_msg_action(turret_controller::ActionStates action)
 
 std::uint8_t to_msg_trigger_state(turret_controller::TriggerStates state)
 {
-  using Turret = antidrone_turret::msg::TurretStatus;
   switch (state) {
     case turret_controller::TriggerStates::TRIGGER_SKIP: {
       return Turret::TRIGGER_SKIP;
@@ -238,5 +237,6 @@ int main(int argc, char** argv)
   rclcpp::init(argc, argv);
   rclcpp::spin(std::make_shared<TurretControllerNode>());
   rclcpp::shutdown();
+
   return 0;
 }
