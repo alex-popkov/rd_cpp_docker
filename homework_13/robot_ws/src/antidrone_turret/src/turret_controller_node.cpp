@@ -133,8 +133,7 @@ public:
 
     target_sub_ = create_subscription<Target>(kTargetTopic, 10, [this](const Target& msg) { on_target(msg); });
 
-    RCLCPP_INFO(
-      get_logger(), "turret_controller_node ready: confidence_threshold=%.2f max_distance_m=%.1f", confidence_threshold_, max_distance_m_);
+    RCLCPP_INFO(get_logger(), "t ready: confidence_threshold=%.2f max_distance_m=%.1f", confidence_threshold_, max_distance_m_);
   }
 
 private:
