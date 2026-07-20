@@ -5,13 +5,13 @@
 #include "simulation.hpp"
 #include "mission_processor.hpp"
 #include "config_loaders/factory.hpp"
-#include "drone_states/state_stopped.hpp"
+#include "providers/thread_safe_target_provider.hpp"
 
 using json = nlohmann::json;
 
-#define ENABLE_LOG	1
-#define ENABLE_DEBUG  0
- 
+#define ENABLE_LOG 0
+#define ENABLE_DEBUG 0
+
 #if ENABLE_LOG
   #define LOG(msg) std::cout << "[LOG] " << msg << std::endl
 #else
@@ -24,55 +24,63 @@ using json = nlohmann::json;
   #define DEBUG(msg)
 #endif
 
+auto main(int argc, char* argv[]) -> int
+{
+  try {
+    const std::string configPath = (argc > 1) ? argv[1] : "config.json";
+    const std::string ammoPath = (argc > 2) ? argv[2] : "ammo.json";
+    const std::string targetsPath = (argc > 3) ? argv[3] : "targets.json";
+    const std::string solverArg = (argc > 4) ? argv[4] : "analytical";
+    const std::string ballisticTablePath = (argc > 5) ? argv[5] : "ballistic_table.txt";
 
- auto main(int argc, char* argv[]) -> int {
-    try {
-        const std::string configPath = (argc > 1) ? argv[1] : "config.json";
-        const std::string ammoPath = (argc > 2) ? argv[2] : "ammo.json";
-        const std::string targetsPath = (argc > 3) ? argv[3] : "targets.json";
-        const std::string solverArg = (argc > 4) ? argv[4] : "analytical";
-        const std::string ballisticTablePath = (argc > 5) ? argv[5] : "ballistic_table.txt";
+    auto loader = createLoader(LoaderType::FILE, configPath, ammoPath);
 
-        auto loader  = createLoader(LoaderType::FILE, configPath, ammoPath);
-        auto targets = createProvider(ProviderType::JSON, targetsPath);
+    loader->load();
+    DroneConfig droneConfig = loader->getConfig();
+    auto physics = std::make_unique<DronePhysics>(droneConfig);
+    auto targets = std::make_unique<ThreadSafeTargetProvider>(targetsPath, droneConfig.arrayTimeStep, droneConfig.timeScale);
+    auto* targetsPtr = targets.get();
+    auto* physicsPtr = physics.get();
 
-        loader->load();
-        DroneConfig droneConfig = loader->getConfig();
+    SolverType solverType = (solverArg == "analytical") ? SolverType::ANALYTICAL : SolverType::TABLE;
+    auto ballisticSolver = createSolver(solverType, droneConfig, ballisticTablePath);
 
-        SolverType solverType = (solverArg == "analytical") ? SolverType::ANALYTICAL : SolverType::TABLE;
-        auto ballisticSolver = createSolver(solverType, droneConfig, ballisticTablePath);
-        std::vector<SimulationStep> simSteps;
-        
-        MissionProcessor missionProcessor(std::move(targets), std::move(ballisticSolver));
-        missionProcessor.init(std::move(loader));
+    if (ballisticSolver == nullptr) {
+      LOG("Error: " << "Unknown ballistic solver");
 
-        //write initial sim data
-        simSteps.push_back({
-            .hit = false,
-            .target = -1,
-            .droneDirection = droneConfig.initialDir,
-            .dropPoint = {0, 0},
-            .aimPoint = {0, 0},
-            .predictedTarget = {0, 0},
-            .dronePosition = droneConfig.startPos,
-            .droneState = StateStopped::NAME
-        });
-
-        // simulation loop
-        while (missionProcessor.hasNext()) {
-            SimulationStep simulationStep = missionProcessor.step();  
-            if (simulationStep.target >= 0) {
-                simSteps.push_back(simulationStep);
-            }
-        }
-        
-        writeSimulationJSONFile(simSteps);
-
-        return 0;
-    } catch (const std::exception& error) {
-        LOG("Error: " << error.what());
-
-        return 1;
+      return 1;
     }
-}
 
+    MissionProcessor missionProcessor(std::move(targets), std::move(ballisticSolver), physicsPtr);
+    missionProcessor.init(std::move(loader));
+
+    std::thread providerThread(&ThreadSafeTargetProvider::run, targetsPtr);
+    std::thread physicsThread(&DronePhysics::run, physicsPtr);
+    std::thread missionThread(&MissionProcessor::run, &missionProcessor);
+
+    while (!targetsPtr->isThreadReady() || !physicsPtr->isThreadReady() || !missionProcessor.isThreadReady()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
+    targetsPtr->start();
+    physicsPtr->start();
+    missionProcessor.start();
+
+    missionThread.join();
+
+    physicsPtr->stop();
+    targetsPtr->stop();
+
+    physicsThread.join();
+    providerThread.join();
+
+    writeSimulationJSONFile(missionProcessor.getSteps());
+
+    return 0;
+  }
+  catch (const std::exception& error) {
+    LOG("Error: " << error.what());
+
+    return 1;
+  }
+}

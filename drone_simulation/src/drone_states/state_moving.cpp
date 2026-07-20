@@ -3,26 +3,18 @@
 #include "drone_states/state_decelerating.hpp"
 #include "simulation.hpp"
 
-
 StateMoving::StateMoving() {}
 
-auto StateMoving::execute(DroneContext& context) -> std::unique_ptr<IDroneState> {
-    float deltaAngle = normalizeAngle(context.directionToTarget - context.direction);
+auto StateMoving::execute(const DroneStateInput& input) -> std::unique_ptr<IDroneState>
+{
+  if (fabs(input.deltaAngle) > input.config.turnThreshold) {
+    return std::make_unique<StateDecelerating>();
+  }
 
-    if (fabs(deltaAngle) > 1e-3f && fabs(deltaAngle) <= context.config->turnThreshold) {
-        context.direction = turnDrone(deltaAngle, context.config->angularSpeed, context.config->simTimeStep, context.direction); 
-    }
+  return nullptr;
+}
 
-    context.timeToStop = context.config->attackSpeed / context.acceleration;
-    context.position = updateDronePosition(context);
-
-    if (fabs(deltaAngle) > context.config->turnThreshold) {
-        return std::make_unique<StateDecelerating>();
-    }
-
-    return nullptr;
-} 
-
-auto StateMoving::name() const -> std::string {
-    return NAME;
+auto StateMoving::name() const -> DroneStates
+{
+  return DroneStates::Moving;
 }

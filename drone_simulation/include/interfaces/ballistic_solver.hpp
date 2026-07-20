@@ -1,12 +1,13 @@
 #pragma once
-#include "../simulation.hpp"
+#include "simulation.hpp"
+
+struct BallisticResult {
+  float flightTime;
+  float hDist;
+};
 
 class IBallisticSolver {
 public:
-    virtual Coord solve(
-        const Coord& dronePosition,
-        const Coord& targetPosition,
-        const AmmoParams& ammmo
-    ) = 0;
-    virtual ~IBallisticSolver() {}
+  virtual BallisticResult solve(const AmmoParams& ammo) = 0;
+  virtual ~IBallisticSolver() {}
 };
