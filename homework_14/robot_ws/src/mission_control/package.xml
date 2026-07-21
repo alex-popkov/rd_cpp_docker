@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>mission_control</name>
+  <version>0.1.0</version>
+  <description>Homework 14 solution: explorer + payload action nodes.</description>
+
+  <maintainer email="me@exmaple123.com">OPopkov</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake_auto</buildtool_depend>
+
+  <!-- rclcpp - клієнтська бібліотека; underground_world - джерело msg/srv -->
+  <depend>rclcpp</depend>
+  <depend>underground_world</depend>
+
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
