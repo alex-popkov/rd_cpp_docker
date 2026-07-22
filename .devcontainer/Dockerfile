@@ -18,7 +18,11 @@ FROM ubuntu:noble@sha256:c4a8d5503dfb2a3eb8ab5f807da5bc69a85730fb49b5cfca2330194
 ARG DEBIAN_FRONTEND="noninteractive"
 
 
-RUN dpkg --add-architecture arm64 && apt update
+COPY ubuntu-amd64.sources /etc/apt/sources.list.d/ubuntu.sources
+COPY ubuntu-arm64.sources /etc/apt/sources.list.d/ubuntu-arm64.sources
+RUN dpkg --add-architecture arm64 && \
+  apt-get update && \
+  apt-get install --no-install-recommends -y libgpiod-dev:arm64
 RUN apt install --no-install-recommends -y libgpiod-dev:arm64
 # Пакети зі списку apt-packages.in (по одному на рядок, коментарі через #).
 #
