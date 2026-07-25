@@ -4,7 +4,7 @@
 #include <optional>
 #include <set>
 #include <utility>
-
+#include <vector>
 #include "rclcpp/rclcpp.hpp"
 
 #include "underground_world/msg/enemy_down.hpp"
@@ -26,6 +26,13 @@ struct Step {
   std::uint8_t dir;
 };
 
+constexpr std::array<Step, 4> kSteps = {{
+  {0, -1, MoveCommand::UP},
+  {0, 1, MoveCommand::DOWN},
+  {-1, 0, MoveCommand::LEFT},
+  {1, 0, MoveCommand::RIGHT},
+}};
+
 constexpr auto kScanTopic = "/robot/local_scan";
 constexpr auto kMoveTopic = "/robot/cmd_move";
 constexpr auto kStatusTopic = "/student/status";
@@ -40,13 +47,19 @@ std::uint8_t direction_to(const Cell& from, const Cell& to)
 {
   const int dx = to.first - from.first;
   const int dy = to.second - from.second;
-  if (dx == 1)
+  if (dx == 1) {
     return MoveCommand::RIGHT;
-  if (dx == -1)
+  }
+
+  if (dx == -1) {
     return MoveCommand::LEFT;
-  if (dy == 1)
+  }
+
+  if (dy == 1) {
     return MoveCommand::DOWN;
-  return MoveCommand::UP;  // dy == -1
+  }
+
+  return MoveCommand::UP;
 }
 
 }  // namespace
@@ -103,6 +116,42 @@ private:
       return;
     }
 
+    // dfs
+    visited_.insert(robot);
+    if (path_stack_.empty()) {
+      path_stack_.push_back(robot);
+    }
+
+    // 1) Спроба піти "вглиб": перший невідвіданий прохідний сусід.
+    for (const auto& step : kSteps) {
+      const Cell next{robot.first + step.dx, robot.second + step.dy};
+      if (visited_.count(next)) {
+        continue;
+      }
+      const auto it = known_.find(next);
+      if (it == known_.end() || !is_passable(it->second)) {
+        continue;
+      }
+      path_stack_.push_back(next);
+      publish_status(StudentStatus::EXPLORING);
+      publish_move(step.dir);
+
+      return;
+    }
+
+    // 2) Глухий кут -> backtrack: знімаємо поточну клітинку зі стека.
+    path_stack_.pop_back();
+    if (path_stack_.empty()) {
+      // Зняли стартову і йти нема куди => все досліджено, і ми вже в S.
+      publish_status(StudentStatus::DONE);
+      done_ = true;
+      RCLCPP_INFO(get_logger(), "exploration complete, back at start");
+      return;
+    }
+
+    publish_status(StudentStatus::RETURNING);
+    publish_move(direction_to(robot, path_stack_.back()));
+
     RCLCPP_INFO(get_logger(), "scan robot=(%d,%d) cells=%zu", scan.robot_x, scan.robot_y, scan.cells.size());
   }
 
@@ -111,6 +160,13 @@ private:
     StudentStatus msg;
     msg.state = state;
     status_pub_->publish(msg);
+  }
+
+  void publish_move(std::uint8_t direction)
+  {
+    MoveCommand msg;
+    msg.direction = direction;
+    move_pub_->publish(msg);
   }
 
   void send_trigger(int contact_id, int x, int y)
@@ -136,7 +192,7 @@ private:
   rclcpp::Client<PayloadTrigger>::SharedPtr trigger_client_;
   rclcpp::Subscription<LocalScan>::SharedPtr scan_sub_;
   std::map<Cell, std::string> known_;
-  std::map<Cell, Cell> parent_;
+  std::vector<Cell> path_stack_;
   std::set<Cell> visited_;
   std::set<int> engaged_ids_;
   std::optional<Cell> start_;
