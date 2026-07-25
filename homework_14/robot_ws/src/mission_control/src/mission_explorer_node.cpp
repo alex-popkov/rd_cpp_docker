@@ -77,6 +77,8 @@ public:
 
     scan_sub_ = create_subscription<LocalScan>(kScanTopic, qos, [this](const LocalScan& msg) { on_scan(msg); });
 
+    startup_timer_ = create_wall_timer(std::chrono::milliseconds{1000}, [this]() { kick_if_no_scan(); });
+
     publish_status(StudentStatus::EXPLORING);
     RCLCPP_INFO(get_logger(), "mission_explorer ready");
   }
@@ -87,6 +89,8 @@ private:
     if (done_) {
       return;
     }
+
+    started_ = true;
 
     const Cell robot{scan.robot_x, scan.robot_y};
     bool active_contact_visible = false;
@@ -146,6 +150,7 @@ private:
       publish_status(StudentStatus::DONE);
       done_ = true;
       RCLCPP_INFO(get_logger(), "exploration complete, back at start");
+
       return;
     }
 
@@ -187,6 +192,18 @@ private:
     });
   }
 
+  void kick_if_no_scan()
+  {
+    if (started_) {
+      startup_timer_->cancel();
+      return;
+    }
+    MoveCommand msg;
+    msg.direction = 255;
+    move_pub_->publish(msg);
+    RCLCPP_WARN(get_logger(), "no initial scan yet, sending wake-up kick");
+  }
+
   rclcpp::Publisher<MoveCommand>::SharedPtr move_pub_;
   rclcpp::Publisher<StudentStatus>::SharedPtr status_pub_;
   rclcpp::Client<PayloadTrigger>::SharedPtr trigger_client_;
@@ -197,6 +214,8 @@ private:
   std::set<int> engaged_ids_;
   std::optional<Cell> start_;
   bool done_ = false;
+  bool started_ = false;
+  rclcpp::TimerBase::SharedPtr startup_timer_;
 };
 
 int main(int argc, char** argv)
