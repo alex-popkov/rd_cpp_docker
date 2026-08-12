@@ -56,7 +56,7 @@ void I2cBus::readRegs(std::uint8_t reg, std::uint8_t* value, std::size_t n)
     throw std::runtime_error("readRegs write ptr: " + std::string(std::strerror(errno)));
   }
 
-  // Фаза 2: читаємо дані. Перевіряємо, що прочитали РІВНО n.
+  // Фаза 2: читаємо дані. Перевіряємо, що прочитали рівно n.
   ssize_t got = ::read(fd_, value, n);
   if (got < 0) {
     throw std::runtime_error("readRegs read: " + std::string(std::strerror(errno)));

@@ -15,7 +15,7 @@ constexpr std::uint8_t EXPECTED_ID = 0x68;
 constexpr double ACCEL_LSB_PER_G = 16384.0;  // +-2g
 constexpr double GYRO_LSB_PER_DPS = 131.0;   // +-250 deg/s
 
-// Старший байт перший (big-endian), знакове.
+// Старший байт перший (big-endian).
 std::int16_t be16(const std::uint8_t* p)
 {
   return static_cast<std::int16_t>((p[0] << 8) | p[1]);
@@ -31,15 +31,14 @@ Mpu6050::Mpu6050(I2cBus& bus, int addr)
 void Mpu6050::begin()
 {
   bus_.select(addr_);
-  // 1) Довести, що це саме MPU-6050.
+  // Довести, що це саме MPU-6050.
   std::uint8_t who = bus_.readReg8(WHO_AM_I);
 
   if (who != EXPECTED_ID) {
     throw std::runtime_error(std::format("невiрний ID: очiкував 0x{:02X}, отримав 0x{:02X}", EXPECTED_ID, who));
   }
 
-  // 2) Розбудити з SLEEP. Після ресету чип спить і виміри "мертві".
-  //    На реальному залізі це обов'язково; на емуляторі — безпечно.
+  // Розбудити з SLEEP.
   bus_.writeReg(PWR_MGMT_1, 0x00);
 }
 
@@ -48,7 +47,7 @@ Sample Mpu6050::read()
   std::uint8_t buf[14];
   bus_.readRegs(ACCEL_XOUT_H, buf, sizeof(buf));
 
-  // Порядок: Accel XYZ (6) | Temp (2) | Gyro XYZ (6)
+  // Порядок: Accel XYZ (6), Temp (2), Gyro XYZ (6)
   Sample s;
   s.ax = be16(&buf[0]) / ACCEL_LSB_PER_G;
   s.ay = be16(&buf[2]) / ACCEL_LSB_PER_G;
