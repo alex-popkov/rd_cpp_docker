@@ -4,16 +4,23 @@
 #include <vector>
 #include <unordered_map>
 #include "json.hpp"
+#include "drone_link.hpp"
 
 using json = nlohmann::json;
 
-enum class DroneStates { Stopped, Turning, Accelerating, Moving, Decelerating };
+// order is important
+// 0 STOPPED
+//  1 ACCELERATING
+//  2 DECELERATING
+//  3 TURNING
+//  4 MOVING
+
+enum class DroneStates { Stopped, Accelerating, Decelerating, Turning, Moving };
 
 struct DroneCommand {
   DroneStates state;
   float angleSpeed;
 };
-
 struct Coord {
   float x;
   float y;
@@ -112,11 +119,20 @@ struct Target {
   Coord pos;
   Coord velocity;
 };
+
 struct DroneTelemetry {
   Coord pos;
   float speed;
   float direction;
   float timeSecSinceStart;
+  DroneStates state;
+};
+
+struct MissionResult {
+  Coord firePoint;
+  Coord aimPoint;
+  bool shouldDrop;
+  int bestTargetIndex;
 };
 
 float getDistanceToTarget(const Coord& target, const Coord& posiiton);
@@ -163,3 +179,5 @@ float getAmmoFlightTime(const DroneConfig& droneConfig, const AmmoParams& ammo);
 float length(const Coord& coord);
 
 Coord normalize(const Coord& coord);
+
+DroneTelemetry mapDlinkTelemetry(const dlink::Telemetry& telemetry);

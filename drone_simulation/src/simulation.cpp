@@ -7,21 +7,6 @@
 
 using json = nlohmann::json;
 
-#define ENABLE_LOG 0
-#define ENABLE_DEBUG 0
-
-#if ENABLE_LOG
-  #define LOG(msg) std::cout << "[LOG] " << msg << std::endl
-#else
-  #define LOG(msg)
-#endif
- 
-#if ENABLE_DEBUG
-  #define DEBUG(msg) std::cout << "[DEBUG] " << msg << std::endl
-#else
-  #define DEBUG(msg)
-#endif
-
 float getDistanceToTarget(const Coord& target, const Coord& posiiton)
 {
   return sqrt(pow(target.x - posiiton.x, 2) + pow(target.y - posiiton.y, 2));
@@ -201,8 +186,6 @@ DroneConfig readDroneConfig(const std::string& path)
 
   droneConfig.ammoName = configJSON["ammo"].get<std::string>();
 
-  DEBUG("ammo config: " << droneConfig.ammoName);
-
   return droneConfig;
 }
 
@@ -278,4 +261,13 @@ float length(const Coord& coord)
 Coord normalize(const Coord& coord)
 {
   return coord / length(coord);
+}
+
+auto mapDlinkTelemetry(const dlink::Telemetry& telemetry) -> DroneTelemetry
+{
+  return {.pos = {telemetry.x, telemetry.y},
+          .speed = telemetry.speed,
+          .direction = telemetry.dir,
+          .timeSecSinceStart = telemetry.t_ms / 1000.0f,
+          .state = static_cast<DroneStates>(telemetry.state)};
 }

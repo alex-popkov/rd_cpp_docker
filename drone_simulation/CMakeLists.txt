@@ -16,16 +16,22 @@ add_library(drone_simulation_lib
     src/drone_states/state_turning.cpp
     src/drone_states/state_moving.cpp
     src/drone_physics.cpp
+    src/port_controllers/uart_port.cpp
+    src/port_controllers/gpio_controller.cpp
+    src/drone_controller.cpp
 )
 
 find_package(Threads REQUIRED)
-target_link_libraries(drone_simulation_lib PUBLIC Threads::Threads)
+target_link_libraries(drone_simulation_lib PUBLIC Threads::Threads ${GPIOD_LIBRARIES})
 
-target_include_directories(drone_simulation_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_compile_options(drone_simulation_lib PRIVATE -Wall -Wextra -pedantic)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GPIOD REQUIRED libgpiod)
+
+target_include_directories(drone_simulation_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${GPIOD_INCLUDE_DIRS})
 
 add_executable(drone_simulation_check src/main.cpp)
-target_link_libraries(drone_simulation_check PRIVATE drone_simulation_lib)
+target_link_libraries(drone_simulation_check PRIVATE drone_simulation_lib ${GPIOD_LIBRARIES})
+target_include_directories(drone_simulation_check PRIVATE ${GPIOD_INCLUDE_DIRS})
 target_compile_options(drone_simulation_check PRIVATE -Wall -Wextra -pedantic)
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/data/

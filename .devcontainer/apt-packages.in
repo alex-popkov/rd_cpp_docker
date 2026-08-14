@@ -32,3 +32,11 @@ cmake
 clang-format
 cmake-format
 ninja-build
+
+
+# work with rpi pins
+libgpiod-dev
+socat
+
+pkg-config
+file

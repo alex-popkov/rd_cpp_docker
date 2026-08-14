@@ -1,86 +1,149 @@
 #include <iostream>
 #include <cmath>
 #include <cstring>
-#include "json.hpp"
-#include "simulation.hpp"
+#include <vector>
+#include <memory>
 #include "mission_processor.hpp"
 #include "config_loaders/factory.hpp"
-#include "providers/thread_safe_target_provider.hpp"
-
-using json = nlohmann::json;
-
-#define ENABLE_LOG 0
-#define ENABLE_DEBUG 0
-
-#if ENABLE_LOG
-  #define LOG(msg) std::cout << "[LOG] " << msg << std::endl
-#else
-  #define LOG(msg)
-#endif
- 
-#if ENABLE_DEBUG
-  #define DEBUG(msg) std::cout << "[DEBUG] " << msg << std::endl
-#else
-  #define DEBUG(msg)
-#endif
+#include "solvers/analytical_solver.hpp"
+#include "port_controllers/uart_port.hpp"
+#include "port_controllers/gpio_controller.hpp"
+#include "drone_controller.hpp"
+#include "interfaces/config_loader.hpp"
+#include "log.hpp"
 
 auto main(int argc, char* argv[]) -> int
 {
   try {
-    const std::string configPath = (argc > 1) ? argv[1] : "config.json";
-    const std::string ammoPath = (argc > 2) ? argv[2] : "ammo.json";
-    const std::string targetsPath = (argc > 3) ? argv[3] : "targets.json";
-    const std::string solverArg = (argc > 4) ? argv[4] : "analytical";
-    const std::string ballisticTablePath = (argc > 5) ? argv[5] : "ballistic_table.txt";
+    std::string uartDev = "/tmp/ttyA";
+    std::string gpioChip = "gpiochip0";
+    std::string configPath = "config.json";
+    int startLine = 24;
+    int dropLine = 23;
 
-    auto loader = createLoader(LoaderType::FILE, configPath, ammoPath);
+    for (int i = 1; i < argc; i++) {
+      std::string arg = argv[i];
+      if (arg == "--uart" && i + 1 < argc) {
+        uartDev = argv[++i];
+      }
+      else if (arg == "--gpiochip" && i + 1 < argc) {
+        gpioChip = argv[++i];
+      }
+      else if (arg == "--start-line" && i + 1 < argc) {
+        startLine = std::stoi(argv[++i]);
+      }
+      else if (arg == "--drop-line" && i + 1 < argc) {
+        dropLine = std::stoi(argv[++i]);
+      }
+      else if (arg == "--config" && i + 1 < argc) {
+        configPath = argv[++i];
+      }
+    }
 
+    DEBUG("UART: " << uartDev << " GPIO: " << gpioChip << " START: " << startLine << " DROP: " << dropLine);
+
+    auto loader = createLoader(LoaderType::FILE, configPath, "");
     loader->load();
     DroneConfig droneConfig = loader->getConfig();
-    auto physics = std::make_unique<DronePhysics>(droneConfig);
-    auto targets = std::make_unique<ThreadSafeTargetProvider>(targetsPath, droneConfig.arrayTimeStep, droneConfig.timeScale);
-    auto* targetsPtr = targets.get();
-    auto* physicsPtr = physics.get();
+    auto solver = std::make_unique<AnalyticalSolver>(droneConfig);
+    MissionProcessor missionProcessor(std::move(solver), droneConfig);
+    DroneController droneController(droneConfig);
 
-    SolverType solverType = (solverArg == "analytical") ? SolverType::ANALYTICAL : SolverType::TABLE;
-    auto ballisticSolver = createSolver(solverType, droneConfig, ballisticTablePath);
+    DEBUG("Config: attackSpeed=" << droneConfig.attackSpeed << " accelPath=" << droneConfig.accelPath
+                                 << " angularSpeed=" << droneConfig.angularSpeed);
 
-    if (ballisticSolver == nullptr) {
-      LOG("Error: " << "Unknown ballistic solver");
+    UartPort uart(uartDev.c_str());
+    GpioController gpio(gpioChip.c_str(), startLine, dropLine);
 
-      return 1;
+    gpio.signalStart();
+    LOG("START signal sent, waiting for data...");
+
+    dlink::AmmoCfg ammo{};
+    bool ammoReceived = false;
+
+    std::vector<dlink::TargetPos> targetPositions;
+    int targetCount = 0;
+
+    dlink::Telemetry telemetry{};
+
+    bool dropped = false;
+    bool mpInitialized = false;
+
+    dlink::Parser parser;
+    uint8_t buffer[256];
+
+    while (!dropped) {
+      int n = uart.readBytes(buffer, sizeof(buffer));
+
+      if (n <= 0) {
+        continue;
+      }
+
+      uint8_t type, len, payload[260];
+      for (int i = 0; i < n; i++) {
+        if (!parser.feed(buffer[i], type, payload, len)) {
+          continue;
+        }
+
+        switch (type) {
+          case dlink::PKT_TELEMETRY: {
+            std::memcpy(&telemetry, payload, sizeof(telemetry));
+
+            DEBUG("t=" << telemetry.t_ms << " pos=(" << telemetry.x << "," << telemetry.y << ")" << " speed=" << telemetry.speed
+                       << " dir=" << telemetry.dir << " z=" << telemetry.z << " state=" << (int)telemetry.state);
+
+            if (ammoReceived && !mpInitialized) {
+              missionProcessor.init(ammo, telemetry.z);
+              mpInitialized = true;
+            }
+
+            dlink::Control control{0.0f, 0.0f};
+            if (mpInitialized) {
+              MissionResult result = missionProcessor.process(telemetry, targetPositions, targetCount);
+
+              if (result.shouldDrop && !dropped) {
+                LOG("DROP!");
+                gpio.signalDrop();
+                dropped = true;
+              }
+
+              DroneTelemetry droneTelemetry = mapDlinkTelemetry(telemetry);
+              control = droneController.computeControl(droneTelemetry, result.aimPoint);
+            }
+
+            uint8_t out[64];
+            size_t m = dlink::encode(dlink::PKT_CONTROL, &control, sizeof(control), out);
+            uart.writeBytes(out, m);
+            break;
+          }
+
+          case dlink::PKT_AMMO: {
+            std::memcpy(&ammo, payload, sizeof(ammo));
+            ammoReceived = true;
+            targetCount = ammo.nTargets;
+            targetPositions.resize(targetCount);
+            LOG("AMMO: " << ammo.name << " mass=" << ammo.mass << " drag=" << ammo.drag << " lift=" << ammo.lift
+                         << " hitRadius=" << ammo.hitRadius << " targets=" << (int)ammo.nTargets);
+            break;
+          }
+
+          case dlink::PKT_TARGET: {
+            dlink::TargetPos targetPosition;
+            std::memcpy(&targetPosition, payload, sizeof(targetPosition));
+
+            if (targetPosition.id < targetPositions.size()) {
+              targetPositions[targetPosition.id] = targetPosition;
+            }
+            break;
+          }
+        }
+      }
     }
-
-    MissionProcessor missionProcessor(std::move(targets), std::move(ballisticSolver), physicsPtr);
-    missionProcessor.init(std::move(loader));
-
-    std::thread providerThread(&ThreadSafeTargetProvider::run, targetsPtr);
-    std::thread physicsThread(&DronePhysics::run, physicsPtr);
-    std::thread missionThread(&MissionProcessor::run, &missionProcessor);
-
-    while (!targetsPtr->isThreadReady() || !physicsPtr->isThreadReady() || !missionProcessor.isThreadReady()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    }
-
-    targetsPtr->start();
-    physicsPtr->start();
-    missionProcessor.start();
-
-    missionThread.join();
-
-    physicsPtr->stop();
-    targetsPtr->stop();
-
-    physicsThread.join();
-    providerThread.join();
-
-    writeSimulationJSONFile(missionProcessor.getSteps());
 
     return 0;
   }
   catch (const std::exception& error) {
-    LOG("Error: " << error.what());
-
+    std::cerr << "Error: " << error.what() << std::endl;
     return 1;
   }
 }
