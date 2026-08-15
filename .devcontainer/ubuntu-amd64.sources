@@ -1,0 +1,15 @@
+# Стандартні Ubuntu-репозиторії для нативних amd64 пакетів devcontainer.
+Types: deb
+URIs: http://archive.ubuntu.com/ubuntu
+Suites: noble noble-updates noble-backports
+Components: main universe restricted multiverse
+Architectures: amd64
+Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+
+# Security updates винесено окремо, бо вони публікуються на іншому mirror.
+Types: deb
+URIs: http://security.ubuntu.com/ubuntu
+Suites: noble-security
+Components: main universe restricted multiverse
+Architectures: amd64
+Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
