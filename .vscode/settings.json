@@ -5,6 +5,8 @@
         "editor.formatOnPaste": false
     },
     "clangd.arguments": [
-        "--compile-commands-dir=${workspaceFolder}/homework_13/robot_ws/build/antidrone_turret"
-    ]
+        "--compile-commands-dir=/Users/admin/rd_cpp_docker/homework_14/robot_ws/build/mission_control",
+        "--log=verbose"
+    ],
+    "C_Cpp.intelliSenseEngine": "disabled"
 }
