@@ -10,5 +10,5 @@ class TableSolver : public IBallisticSolver {
 public:
   TableSolver(const DroneConfig& config, std::string table_path);
 
-  auto solve(const Coord& dronePosition, const Coord& targetPosition, const AmmoParams& ammo) -> Coord override;
+  auto solve(const AmmoParams& ammo) -> BallisticResult override;
 };
