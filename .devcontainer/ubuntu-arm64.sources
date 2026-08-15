@@ -1,7 +1,0 @@
-# ARM64 пакети Ubuntu публікуються через ports.ubuntu.com.
-Types: deb
-URIs: http://ports.ubuntu.com/ubuntu-ports
-Suites: noble noble-updates noble-backports noble-security
-Components: main universe restricted multiverse
-Architectures: arm64
-Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
