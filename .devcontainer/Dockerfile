@@ -24,6 +24,7 @@ ARG DEBIAN_FRONTEND="noninteractive"
 # archive.ubuntu.com (там його немає -> 404).
 COPY ubuntu-amd64.sources /etc/apt/sources.list.d/ubuntu.sources
 COPY ubuntu-arm64.sources /etc/apt/sources.list.d/ubuntu-arm64.sources
+
 RUN dpkg --add-architecture arm64 && \
   apt-get update && \
   apt-get install --no-install-recommends -y libgpiod-dev:arm64
