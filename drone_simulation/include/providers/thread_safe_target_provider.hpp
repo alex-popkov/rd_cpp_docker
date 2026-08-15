@@ -2,6 +2,7 @@
 #include <cstring>
 #include <vector>
 #include <atomic>
+#include <mutex>
 #include "interfaces/target_provider.hpp"
 
 class ThreadSafeTargetProvider : public ITargetProvider {
