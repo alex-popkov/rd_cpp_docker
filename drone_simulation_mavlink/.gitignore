@@ -42,8 +42,4 @@ Thumbs.db
 # Clangd index cache
 .cache/
 
-simulation.json
-
-homework_13/robot_ws/install/
-homework_13/robot_ws/build/
-homework_13/robot_ws/log/
+c_library_v2/
