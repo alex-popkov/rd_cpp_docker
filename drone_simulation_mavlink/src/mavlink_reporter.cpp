@@ -55,12 +55,19 @@ auto MavlinkReporter::sendTelemetry(const dlink::Telemetry& t) -> void
   int32_t lon_e7 = static_cast<int32_t>(std::lround(lon * 1e7));
   int32_t alt_mm = static_cast<int32_t>(std::lround(t.z * 1000.0f));  // висота, мм
   int32_t rel_mm = alt_mm;                                            // relative_alt = та сама висота
-  int16_t vx_cms = static_cast<int16_t>(std::lround(t.vx * 100.0f));  // см/с
-  int16_t vy_cms = static_cast<int16_t>(std::lround(t.vy * 100.0f));
+  // Швидкість рахуємо зі speed+dir
+  // Симулятор: x=схід=speed*cos(dir), y=північ=speed*sin(dir).
+  float east = t.speed * std::cos(t.dir);
+  float north = t.speed * std::sin(t.dir);
+
+  // MAVLink: vx = НА ПІВНІЧ, vy = НА СХІД (не вздовж x/y!)
+  int16_t vx_cms = static_cast<int16_t>(std::lround(north * 100.0f));  // см/с
+  int16_t vy_cms = static_cast<int16_t>(std::lround(east * 100.0f));
   int16_t vz_cms = 0;  // вертикальної швидкості не рахуємо
 
-  // курс: радіани -> сотих градуса, нормалізований у [0, 36000)
-  float deg = t.dir * 180.0f / static_cast<float>(M_PI);
+  // hdg — КОМПАСНИЙ азимут: 0=північ, за годинниковою.
+  // Переклад з матем. кута (0=схід, проти годинникової): bearing = 90 - dir.
+  float deg = 90.0f - t.dir * 180.0f / static_cast<float>(M_PI);
   while (deg < 0.0f) {
     deg += 360.0f;
   }
@@ -75,14 +82,23 @@ auto MavlinkReporter::sendTelemetry(const dlink::Telemetry& t) -> void
   sendMsg(this->udp, pos);
 
   // --- ATTITUDE ---
+  // yaw — той самий компасний курс, у радіанах, нормалізований у [-pi, pi].
+  float yaw = static_cast<float>(M_PI) / 2.0f - t.dir;  // 90 - dir
+  while (yaw > static_cast<float>(M_PI)) {
+    yaw -= 2.0f * static_cast<float>(M_PI);
+  }
+  while (yaw < -static_cast<float>(M_PI)) {
+    yaw += 2.0f * static_cast<float>(M_PI);
+  }
+
   mavlink_message_t att;
   mavlink_msg_attitude_pack(SYSID,
                             COMPID,
                             &att,
                             t.t_ms,  // time_boot_ms
                             0.0f,
-                            0.0f,   // roll, pitch — нулі (модель їх не рахує)
-                            t.dir,  // yaw — курс у радіанах
+                            0.0f,  // roll, pitch — нулі (модель їх не рахує)
+                            yaw,   // yaw — компасний курс у радіанах
                             0.0f,
                             0.0f,
                             0.0f);  // *speed — нулі
