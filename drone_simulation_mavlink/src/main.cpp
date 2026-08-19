@@ -3,6 +3,7 @@
 #include <cstring>
 #include <vector>
 #include <memory>
+#include <chrono>
 #include "mission_processor.hpp"
 #include "config_loaders/factory.hpp"
 #include "solvers/analytical_solver.hpp"
@@ -11,6 +12,7 @@
 #include "drone_controller.hpp"
 #include "interfaces/config_loader.hpp"
 #include "log.hpp"
+#include "mavlink_reporter.hpp"
 
 auto main(int argc, char* argv[]) -> int
 {
@@ -18,6 +20,7 @@ auto main(int argc, char* argv[]) -> int
     std::string uartDev = "/tmp/ttyA";
     std::string gpioChip = "gpiochip0";
     std::string configPath = "config.json";
+    std::string mavlinkDest = "127.0.0.1:14550";
     int startLine = 24;
     int dropLine = 23;
 
@@ -38,6 +41,9 @@ auto main(int argc, char* argv[]) -> int
       else if (arg == "--config" && i + 1 < argc) {
         configPath = argv[++i];
       }
+      else if (arg == "--mavlink" && i + 1 < argc) {
+        mavlinkDest = argv[++i];
+      }
     }
 
     DEBUG("UART: " << uartDev << " GPIO: " << gpioChip << " START: " << startLine << " DROP: " << dropLine);
@@ -48,6 +54,10 @@ auto main(int argc, char* argv[]) -> int
     auto solver = std::make_unique<AnalyticalSolver>(droneConfig);
     MissionProcessor missionProcessor(std::move(solver), droneConfig);
     DroneController droneController(droneConfig);
+
+    std::string mavHost = mavlinkDest.substr(0, mavlinkDest.find(':'));
+    uint16_t mavPort = static_cast<uint16_t>(std::stoi(mavlinkDest.substr(mavlinkDest.find(':') + 1)));
+    MavlinkReporter mavlinkReporter(mavHost, mavPort);
 
     DEBUG("Config: attackSpeed=" << droneConfig.attackSpeed << " accelPath=" << droneConfig.accelPath
                                  << " angularSpeed=" << droneConfig.angularSpeed);
@@ -66,13 +76,57 @@ auto main(int argc, char* argv[]) -> int
 
     dlink::Telemetry telemetry{};
 
-    bool dropped = false;
     bool mpInitialized = false;
 
     dlink::Parser parser;
     uint8_t buffer[256];
 
-    while (!dropped) {
+    // mavlink heartbeat, first time
+    auto lastHeartbeat = std::chrono::steady_clock::now();
+    mavlinkReporter.sendHeartbeat();
+
+    constexpr int MAX_ATTEMPTS = 5;
+    constexpr auto ACK_TIMEOUT = std::chrono::milliseconds(500);
+
+    bool mavlinkAcked = false;
+    int mavlinkDropAttempts = 0;
+    double dropLat = 0;
+    double dropLon = 0;
+    float dropAlt = 0;
+    auto lastDropSend = std::chrono::steady_clock::now();
+
+    bool running = true;
+    bool dropSent = false;
+
+    while (running) {
+      // mavlink heartbeat
+      auto now = std::chrono::steady_clock::now();
+      if (now - lastHeartbeat >= std::chrono::seconds(1)) {
+        mavlinkReporter.sendHeartbeat();
+        lastHeartbeat = now;
+      }
+
+      // mavlink retry
+      if (dropSent && !mavlinkAcked && mavlinkDropAttempts < MAX_ATTEMPTS) {
+        if (mavlinkReporter.pollDropAck()) {
+          mavlinkAcked = true;
+          LOG("DROP ACK received");
+        }
+        else if (std::chrono::steady_clock::now() - lastDropSend >= ACK_TIMEOUT) {
+          mavlinkReporter.sendDropCommand(dropLat, dropLon, dropAlt, mavlinkDropAttempts);
+          mavlinkDropAttempts++;
+          lastDropSend = std::chrono::steady_clock::now();
+          LOG("DROP COMMAND_LONG attempt " << mavlinkDropAttempts);
+        }
+      }
+
+      if (dropSent && (mavlinkAcked || mavlinkDropAttempts >= MAX_ATTEMPTS)) {
+        if (!mavlinkAcked) {
+          LOG("DROP ACK NOT received after " << MAX_ATTEMPTS << " attempts");
+        }
+        running = false;
+      }
+
       int n = uart.readBytes(buffer, sizeof(buffer));
 
       if (n <= 0) {
@@ -88,6 +142,7 @@ auto main(int argc, char* argv[]) -> int
         switch (type) {
           case dlink::PKT_TELEMETRY: {
             std::memcpy(&telemetry, payload, sizeof(telemetry));
+            mavlinkReporter.sendTelemetry(telemetry);
 
             DEBUG("t=" << telemetry.t_ms << " pos=(" << telemetry.x << "," << telemetry.y << ")" << " speed=" << telemetry.speed
                        << " dir=" << telemetry.dir << " z=" << telemetry.z << " state=" << (int)telemetry.state);
@@ -101,10 +156,18 @@ auto main(int argc, char* argv[]) -> int
             if (mpInitialized) {
               MissionResult result = missionProcessor.process(telemetry, targetPositions, targetCount);
 
-              if (result.shouldDrop && !dropped) {
+              if (result.shouldDrop && !dropSent) {
                 LOG("DROP!");
                 gpio.signalDrop();
-                dropped = true;
+
+                // send drop mavlink
+                MavlinkReporter::localToGps(telemetry.x, telemetry.y, dropLat, dropLon);
+                dropAlt = telemetry.z;
+                mavlinkReporter.sendDropCommand(dropLat, dropLon, dropAlt, 0);
+                mavlinkDropAttempts = 1;
+                lastDropSend = std::chrono::steady_clock::now();
+                dropSent = true;
+                LOG("DROP COMMAND_LONG attempt 1");
               }
 
               DroneTelemetry droneTelemetry = mapDlinkTelemetry(telemetry);

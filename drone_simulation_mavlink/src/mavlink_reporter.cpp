@@ -115,7 +115,7 @@ auto MavlinkReporter::pollDropAck() -> bool
   mavlink_message_t msg;
   mavlink_status_t status;
 
-  // Витягуємо ВСІ датаграми, що встигли накопичитись (неблокуючий сокет).
+  // в циклі витягуємо все, що вже могло накопичитись
   int n;
   while ((n = this->udp.recv(buf, sizeof(buf))) > 0) {
     for (int i = 0; i < n; ++i) {
@@ -130,5 +130,6 @@ auto MavlinkReporter::pollDropAck() -> bool
       }
     }
   }
+
   return false;
 }

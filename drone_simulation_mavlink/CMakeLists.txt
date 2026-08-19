@@ -18,7 +18,9 @@ add_library(drone_simulation_lib
     src/drone_physics.cpp
     src/port_controllers/uart_port.cpp
     src/port_controllers/gpio_controller.cpp
+    src/port_controllers/udp_port.cpp
     src/drone_controller.cpp
+    src/mavlink_reporter.cpp
 )
 
 find_package(Threads REQUIRED)
@@ -35,6 +37,7 @@ add_executable(drone_simulation_check src/main.cpp)
 target_link_libraries(drone_simulation_check PRIVATE drone_simulation_lib ${GPIOD_LIBRARIES})
 target_include_directories(drone_simulation_check PRIVATE ${GPIOD_INCLUDE_DIRS})
 target_compile_options(drone_simulation_check PRIVATE -Wall -Wextra -pedantic)
+target_compile_options(drone_simulation_lib PRIVATE -Wall -Wextra -pedantic)
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/data/
      DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

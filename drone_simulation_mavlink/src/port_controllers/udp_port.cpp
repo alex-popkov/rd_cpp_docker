@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include "port_controllers/udp_port.hpp"
 
-UDPPort::UDPPort(const std::string& host, uint16_t port)
+UdpPort::UdpPort(const std::string& host, uint16_t port)
 {
   this->fd = socket(AF_INET, SOCK_DGRAM, 0);
   if (this->fd < 0) {
@@ -31,12 +31,12 @@ UdpPort::~UdpPort()
   }
 }
 
-auto UDPPort::send(const uint8_t* buf, size_t byteCount) -> void
+auto UdpPort::send(const uint8_t* buf, size_t byteCount) -> void
 {
   ::sendto(this->fd, buf, byteCount, 0, (const sockaddr*)&this->dest, sizeof(this->dest));
 }
 
-auto UDPPort::recv(uint8_t* buf, size_t maxByteCount) -> int
+auto UdpPort::recv(uint8_t* buf, size_t maxByteCount) -> int
 {
   return ::recvfrom(this->fd, buf, maxByteCount, 0, nullptr, nullptr);
 }
