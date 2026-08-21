@@ -28,6 +28,7 @@ enable_testing()
 
 # Домашні роботи. По мірі появи додаємо кожну окремим add_subdirectory.
 add_subdirectory(drone_simulation)
+add_subdirectory(drone_simulation_api_call)
 add_subdirectory(homework_04)
 add_subdirectory(homework_05)
 add_subdirectory(homework_06)

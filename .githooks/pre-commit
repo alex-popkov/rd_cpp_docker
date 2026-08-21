@@ -9,7 +9,8 @@ if ! command -v clang-format >/dev/null 2>&1; then
 fi
 
 staged=$(git diff --cached --name-only --diff-filter=ACMR \
-  | grep -E '\.(cpp|cc|cxx|hpp|hh|hxx|h)$' || true)
+  | grep -E '\.(cpp|cc|cxx|hpp|hh|hxx|h)$' \
+  | grep -vE '(^|/)(json|httplib)\.h(pp)?$' || true)
 
 if [ -z "$staged" ]; then
   exit 0
