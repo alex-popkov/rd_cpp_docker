@@ -43,3 +43,8 @@ Thumbs.db
 .cache/
 
 simulation.json
+
+# Зовнішня MAVLink-бібліотека (склонований окремий git-репозиторій)
+drone_simulation_mavlink/c_library_v2/
+
+.idea/
