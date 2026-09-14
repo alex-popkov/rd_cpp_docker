@@ -1,0 +1,4 @@
+[wokwi]
+version = 1
+firmware = 'build/homework_36_esp32.bin'
+elf = 'build/homework_36_esp32.elf'
